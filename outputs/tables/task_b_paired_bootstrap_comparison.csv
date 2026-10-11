@@ -1,0 +1,4 @@
+Comparison,Metric,Diff_Mean,CI_95_Lower,CI_95_Upper,P_Value,Stat_Significant
+LightGBM (CW) vs XGBoost (CW),Fatal PR-AUC Diff,-0.002,-0.0042,0.0004,0.088,No
+LightGBM (CW) vs Small MLP (CW),Fatal PR-AUC Diff,0.0041,0.0004,0.0075,0.03,Yes
+XGBoost (CW) vs Small MLP (CW),Fatal PR-AUC Diff,0.0059,0.0021,0.0096,0.004,Yes

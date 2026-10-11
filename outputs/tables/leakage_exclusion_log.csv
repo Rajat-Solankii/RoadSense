@@ -1,0 +1,46 @@
+column_name,rationale
+collision_injury_based,DfT post-accident classification: records whether severity was determined via injury-based reporting system; directly leaks injury outcome.
+collision_adjusted_severity_serious,DfT modeled probability: calculated post-hoc to adjust for police force reporting system differences; leaks target severity.
+collision_adjusted_severity_slight,DfT modeled probability: calculated post-hoc to adjust for police force reporting system differences; leaks target severity.
+enhanced_severity_collision,DfT post-accident administrative field: records severity reassessed after hospital verification; leaks target severity.
+first_point_of_impact,DfT crash dynamics field (code 1-4): records vehicle impact location at the moment of collision; occurs during the crash event.
+skidding_and_overturning,"DfT crash dynamics field (code 1-5): records whether vehicle skidded, jackknifed, or overturned during collision physics."
+vehicle_leaving_carriageway,DfT crash dynamics field (code 1-8): records whether and where vehicle ran off the road as a consequence of impact.
+hit_object_in_carriageway,DfT crash dynamics field (code 1-12): records secondary collisions with objects in the carriageway during impact.
+hit_object_off_carriageway,DfT crash dynamics field (code 1-11): records secondary collisions with roadside furniture/trees post-impact.
+vehicle_manoeuvre,DfT crash dynamics field (code 1-18): records vehicle action at the exact moment of collision; not an environmental condition.
+vehicle_manoeuvre_historic,DfT legacy crash dynamics field: pre-2024 duplicate of vehicle_manoeuvre.
+vehicle_direction_from,DfT kinematic vector: compass direction of travel at moment of impact.
+vehicle_direction_to,DfT kinematic vector: intended destination trajectory at moment of impact.
+towing_and_articulation,DfT vehicle equipment field: >99% unrecorded/none in road safety extract.
+did_police_officer_attend_scene_of_accident,DfT operational field: records whether officer attended the scene; determined after accident notification.
+journey_purpose_of_driver,DfT post-incident driver survey response; not an environmental road risk factor.
+journey_purpose_of_driver_historic,DfT legacy driver survey field.
+driver_imd_decile,DfT socioeconomic index: Index of Multiple Deprivation decile of driver residential postcode; administrative census field.
+lsoa_of_driver,DfT census identifier: Lower Layer Super Output Area of driver residence.
+lsoa_of_accident_location,DfT census identifier: administrative geographic boundary; overfits spatial polygons.
+collision_ref_no,DfT internal police administrative reference number string.
+local_authority_district,DfT administrative council code; redundant with police_force and road environment.
+local_authority_ons_district,DfT ONS administrative boundary identifier.
+local_authority_highway,DfT highway authority administrative identifier.
+local_authority_highway_current,DfT current highway authority administrative identifier.
+second_road_class,DfT highway numbering for secondary junction arms; missing for non-junction collisions.
+second_road_number,DfT highway numbering for secondary junction arms.
+first_road_number,"DfT road route number (e.g., A40, M1); high cardinality identifier hindering spatial generalization."
+pedestrian_crossing_human_control_historic,DfT legacy duplicate crossing field.
+pedestrian_crossing_physical_facilities_historic,DfT legacy duplicate crossing field.
+pedestrian_crossing,DfT pedestrian crossing facility code; primarily relevant to pedestrian casualty records.
+special_conditions_at_site,"DfT transient site flag (e.g., defective signs, roadworks); >98% unrecorded/none."
+carriageway_hazards_historic,DfT legacy duplicate hazard field.
+junction_detail_historic,DfT legacy specification column; standardized modern junction_detail is retained.
+location_easting_osgr,DfT British National Grid easting coordinate; causes tree models to memorize spatial points.
+location_northing_osgr,DfT British National Grid northing coordinate; causes tree models to memorize spatial points.
+longitude,DfT geographic coordinate; causes tree models to memorize spatial points.
+latitude,DfT geographic coordinate; causes tree models to memorize spatial points.
+generic_make_model,DfT vehicle make and model string; high cardinality and unstandardized commercial text.
+engine_capacity_cc,DfT mechanistic vehicle attribute; high missing rate and correlated with vehicle_type.
+propulsion_code,DfT fuel/propulsion type code; secondary technical parameter.
+escooter_flag,DfT flag added experimentally in 2022; inconsistent across 2021-2023 collection.
+driver_distance_banding,DfT driver survey field; >80% unrecorded.
+sex_of_driver,Driver demographic attribute; excluded to prevent demographic bias in risk assessment.
+age_of_driver,Continuous driver age; binned into age_band_of_driver to prevent single-year overfitting.

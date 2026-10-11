@@ -1,0 +1,26 @@
+# Environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Raw data files (>100MB raw STATS19 CSVs)
+data/*.csv
+data/*.xlsx
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+scratch/
+*.log

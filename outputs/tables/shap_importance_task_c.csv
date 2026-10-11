@@ -1,0 +1,82 @@
+rank,feature,feature_short,mean_abs_shap
+1,most_vulnerable_vehicle_type_car_taxi,Vuln: car_taxi,0.131347
+2,number_of_vehicles,number_of_vehicles,0.093308
+3,speed_limit,speed_limit,0.05555
+4,driver_age_band_youngest,driver_age_band_youngest,0.025217
+5,day_of_week,day_of_week,0.020874
+6,hour,hour,0.01789
+7,urban_or_rural_area_2.0,Area: 2.0,0.014706
+8,road_type_6.0,Road: 6.0,0.011067
+9,month,month,0.009043
+10,junction_detail_16.0,Junction: 16.0,0.008883
+11,most_vulnerable_vehicle_type_pedal_cycle,Vuln: pedal_cycle,0.007305
+12,first_road_class_6,RdClass: 6,0.006371
+13,age_of_vehicle_max,age_of_vehicle_max,0.004622
+14,driver_age_band_youngest_missing,driver_age_band_youngest_missing,0.004526
+15,most_vulnerable_vehicle_type_motorcycle,Vuln: motorcycle,0.004363
+16,junction_detail_0.0,Junction: 0.0,0.004186
+17,age_of_vehicle_max_missing,age_of_vehicle_max_missing,0.003928
+18,road_surface_conditions_2.0,Surface: 2.0,0.003615
+19,any_hgv_or_bus,any_hgv_or_bus,0.002469
+20,junction_control_Unknown,JnCtrl: Unknown,0.002291
+21,any_motorcycle,any_motorcycle,0.002234
+22,carriageway_hazards_Unknown,Hazard: Unknown,0.002074
+23,weather_conditions_Unknown,Weather: Unknown,0.002021
+24,first_road_class_3,RdClass: 3,0.002007
+25,weather_conditions_1.0,Weather: 1.0,0.001928
+26,road_type_1.0,Road: 1.0,0.001911
+27,most_vulnerable_vehicle_type_hgv_or_bus,Vuln: hgv_or_bus,0.001737
+28,most_vulnerable_vehicle_type_van,Vuln: van,0.001723
+29,light_conditions_6.0,Light: 6.0,0.001334
+30,road_type_3.0,Road: 3.0,0.001296
+31,trunk_road_flag_Unknown,Trunk: Unknown,0.001228
+32,light_conditions_1.0,Light: 1.0,0.001205
+33,first_road_class_5,RdClass: 5,0.001203
+34,light_conditions_Unknown,Light: Unknown,0.001178
+35,junction_detail_Unknown,Junction: Unknown,0.001108
+36,urban_or_rural_area_1.0,Area: 1.0,0.000956
+37,trunk_road_flag_2.0,Trunk: 2.0,0.000773
+38,junction_detail_13.0,Junction: 13.0,0.000764
+39,road_type_Unknown,Road: Unknown,0.000618
+40,road_type_2.0,Road: 2.0,0.00058
+41,road_surface_conditions_1.0,Surface: 1.0,0.00051
+42,first_road_class_1,RdClass: 1,0.000396
+43,light_conditions_4.0,Light: 4.0,0.000326
+44,junction_detail_17.0,Junction: 17.0,0.000261
+45,weather_conditions_8.0,Weather: 8.0,0.000246
+46,carriageway_hazards_14.0,Hazard: 14.0,0.000225
+47,trunk_road_flag_1.0,Trunk: 1.0,0.000208
+48,weather_conditions_7.0,Weather: 7.0,0.000201
+49,junction_control_4.0,JnCtrl: 4.0,0.0002
+50,junction_control_2.0,JnCtrl: 2.0,0.000198
+51,weather_conditions_2.0,Weather: 2.0,0.000197
+52,first_road_class_4,RdClass: 4,0.000178
+53,carriageway_hazards_0.0,Hazard: 0.0,0.000169
+54,weather_conditions_3.0,Weather: 3.0,0.00014
+55,junction_detail_18.0,Junction: 18.0,9.6e-05
+56,road_surface_conditions_5.0,Surface: 5.0,9e-05
+57,weather_conditions_5.0,Weather: 5.0,8.8e-05
+58,road_type_7.0,Road: 7.0,8.3e-05
+59,first_road_class_2,RdClass: 2,7.9e-05
+60,carriageway_hazards_18.0,Hazard: 18.0,7.8e-05
+61,carriageway_hazards_13.0,Hazard: 13.0,7.2e-05
+62,carriageway_hazards_12.0,Hazard: 12.0,4.9e-05
+63,junction_detail_19.0,Junction: 19.0,4.4e-05
+64,light_conditions_5.0,Light: 5.0,4.2e-05
+65,junction_control_3.0,JnCtrl: 3.0,3.4e-05
+66,carriageway_hazards_17.0,Hazard: 17.0,2.9e-05
+67,road_surface_conditions_Unknown,Surface: Unknown,2.8e-05
+68,road_surface_conditions_3.0,Surface: 3.0,2.7e-05
+69,weather_conditions_4.0,Weather: 4.0,2.4e-05
+70,urban_or_rural_area_Unknown,Area: Unknown,2.4e-05
+71,carriageway_hazards_21.0,Hazard: 21.0,1e-05
+72,carriageway_hazards_16.0,Hazard: 16.0,8e-06
+73,road_surface_conditions_4.0,Surface: 4.0,6e-06
+74,weather_conditions_6.0,Weather: 6.0,0.0
+75,carriageway_hazards_15.0,Hazard: 15.0,0.0
+76,junction_control_1.0,JnCtrl: 1.0,0.0
+77,carriageway_hazards_11.0,Hazard: 11.0,0.0
+78,carriageway_hazards_19.0,Hazard: 19.0,0.0
+79,carriageway_hazards_20.0,Hazard: 20.0,0.0
+80,most_vulnerable_vehicle_type_other_unknown,Vuln: other_unknown,0.0
+81,any_pedal_cycle,any_pedal_cycle,0.0

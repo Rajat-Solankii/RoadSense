@@ -1,0 +1,4 @@
+Comparison,Metric,Diff_Mean,CI_95_Lower,CI_95_Upper,P_Value,Stat_Significant
+LightGBM (CW) vs XGBoost (CW),PR-AUC Difference,-0.0007,-0.0016,0.0001,0.102,No (CI contains 0)
+LightGBM (CW) vs XGBoost (RUS),PR-AUC Difference,0.0027,0.0015,0.004,0.0,Yes
+XGBoost (CW) vs XGBoost (RUS),PR-AUC Difference,0.0034,0.0022,0.0047,0.0,Yes

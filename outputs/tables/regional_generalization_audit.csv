@@ -1,0 +1,13 @@
+Region_Category,Region_Name,Police_Force_Code,Collisions_Count,Dangerous_Prevalence,Task_A_PR_AUC,Task_A_ROC_AUC,Task_A_Recall_at_Tau,Fatal_Prevalence,Task_B_Fatal_PR_AUC,Task_B_Fatal_ROC_AUC,Task_B_Fatal_Recall_at_Tau
+Area Type,Urban,N/A,70312,0.2143,0.3603,0.6838,90.35,0.0081,0.0379,0.7799,16.2
+Area Type,Rural,N/A,33934,0.2915,0.4878,0.6906,97.65,0.0281,0.0773,0.7432,60.27
+Police Force,Metropolitan Police (London),1.0,22740,0.1564,0.2848,0.7047,90.8,0.0044,0.031,0.7962,15.84
+Police Force,West Midlands,20.0,4688,0.2084,0.3303,0.6728,85.36,0.009,0.0642,0.7834,11.9
+Police Force,West Yorkshire,13.0,4247,0.303,0.4471,0.6508,89.04,0.0113,0.0215,0.691,12.5
+Police Force,Kent,46.0,3896,0.2128,0.3492,0.6493,92.16,0.0113,0.1056,0.7822,45.45
+Police Force,Police Force 47.0,47.0,3534,0.2683,0.4093,0.6476,94.73,0.011,0.0497,0.822,58.97
+Police Force,Hampshire,44.0,3351,0.2483,0.4091,0.6819,95.43,0.0131,0.0485,0.8154,43.18
+Police Force,Thames Valley,43.0,2949,0.2136,0.4285,0.731,95.87,0.0136,0.0555,0.8334,42.5
+Police Force,Essex,42.0,2840,0.275,0.4585,0.6897,93.09,0.0144,0.0507,0.739,24.39
+Police Force,Devon & Cornwall,50.0,2806,0.2455,0.425,0.6734,95.79,0.0164,0.0653,0.8085,56.52
+Police Force,Police Force 4.0,4.0,2762,0.328,0.4787,0.6442,91.17,0.0127,0.0533,0.7987,31.43
