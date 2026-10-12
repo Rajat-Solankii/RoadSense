@@ -49,8 +49,16 @@ class PlattCalibrator:
             return probs
         eps = 1e-6
         p = np.clip(probs, eps, 1.0 - eps)
-        logits = np.log(p / (1.0 - p)).reshape(-1, 1)
-        return self.calibrator.predict_proba(logits)[:, 1]
+        logits = np.log(p / (1.0 - p))
+        # Robust analytical sigmoid resilient to scikit-learn unpickling differences
+        if hasattr(self.calibrator, "coef_") and hasattr(self.calibrator, "intercept_"):
+            w = float(self.calibrator.coef_[0][0])
+            b = float(self.calibrator.intercept_[0])
+            z = w * logits + b
+            return 1.0 / (1.0 + np.exp(-z))
+        if not hasattr(self.calibrator, "multi_class"):
+            self.calibrator.multi_class = "auto"
+        return self.calibrator.predict_proba(logits.reshape(-1, 1))[:, 1]
 
 
 def evaluate_binary_classification(

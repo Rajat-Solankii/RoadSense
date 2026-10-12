@@ -93,6 +93,32 @@ def load_models():
     return models
 
 
+def calibrate_single_prob(calibrator, raw_prob: float) -> float:
+    """Robust probability calibration resilient to cross-version unpickling differences."""
+    if calibrator is None:
+        return float(raw_prob)
+    # Direct analytical sigmoid calculation from fitted weights
+    lr = getattr(calibrator, "calibrator", None)
+    if lr is not None and hasattr(lr, "coef_") and hasattr(lr, "intercept_"):
+        try:
+            w = float(lr.coef_[0][0])
+            b = float(lr.intercept_[0])
+            eps = 1e-6
+            p = np.clip(float(raw_prob), eps, 1.0 - eps)
+            logit = np.log(p / (1.0 - p))
+            z = w * logit + b
+            return float(1.0 / (1.0 + np.exp(-z)))
+        except Exception:
+            pass
+    # Patch multi_class if missing (scikit-learn pickle version drift)
+    if lr is not None and not hasattr(lr, "multi_class"):
+        lr.multi_class = "auto"
+    try:
+        return float(calibrator.predict_proba(np.array([raw_prob]))[0])
+    except Exception:
+        return float(raw_prob)
+
+
 # ==============================================================================
 # PREDICTION ENGINE
 # ==============================================================================
@@ -136,7 +162,7 @@ def predict_single(models: dict, scenario: dict) -> dict:
     if "A" in models:
         m = models["A"]
         raw_prob = m["pipeline"].predict_proba(X)[:, 1][0]
-        cal_prob = float(m["calibrator"].predict_proba(np.array([raw_prob]))[0])
+        cal_prob = calibrate_single_prob(m.get("calibrator"), raw_prob)
         threshold = m["optimal_threshold"]
         pred = int(cal_prob >= threshold)
         band = get_risk_band(cal_prob)
@@ -159,7 +185,7 @@ def predict_single(models: dict, scenario: dict) -> dict:
         tau_serious = m.get("optimal_serious_threshold", 0.45)
 
         # Calibrate fatal probability
-        cal_fatal = float(m["fatal_calibrator"].predict_proba(np.array([raw_probs[0]]))[0])
+        cal_fatal = calibrate_single_prob(m.get("fatal_calibrator"), raw_probs[0])
 
         if cal_fatal >= tau_fatal:
             pred_class = 0
