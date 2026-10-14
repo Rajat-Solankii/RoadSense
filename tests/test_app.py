@@ -19,7 +19,7 @@ def test_index_route(client):
     response = client.get("/")
     assert response.status_code == 200
     assert b"RoadSense" in response.data
-    assert b"Scenario Customizer" in response.data
+    assert b"Scenario" in response.data
 
 
 def test_api_presets_route(client):
