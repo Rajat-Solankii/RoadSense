@@ -3,213 +3,714 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RoadSense - Road Safety Assessment</title>
+    <title>RoadSense — Road Safety & Disaster Decision-Support Dashboard</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
     <div class="container">
-        <!-- Header -->
-        <header class="header">
-            <h1>RoadSense — Road Safety Risk Assessment</h1>
-            <p>MoRTH & iRAD Calibrated Collision Severity & Disaster Prediction Tool</p>
+        <!-- Top App Bar -->
+        <header class="app-header">
+            <div class="header-left">
+                <span class="app-symbol">🛡️</span>
+                <div>
+                    <h1 class="app-title">RoadSense — Road Safety Decision Support</h1>
+                    <p class="app-sub">MoRTH 2022-23 & iRAD Calibrated Predictive Collision Analysis</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="stat-pill">
+                    <span class="stat-num" id="sessionEvaluationsCount">0</span>
+                    <span class="stat-lbl">Evaluations</span>
+                </div>
+                <div class="stat-pill stat-danger">
+                    <span class="stat-num" id="sessionCriticalCount">0</span>
+                    <span class="stat-lbl">Critical Flags</span>
+                </div>
+                <button type="button" class="btn btn-outline" onclick="window.print()">🖨️ Print Audit Sheet</button>
+            </div>
         </header>
 
-        <!-- Preset Buttons -->
-        <section class="card">
-            <h2>Select Scenario</h2>
-            <p class="subtitle">Click a preset button to load standard conditions, or customize below:</p>
-            <div class="preset-buttons" id="presetsGrid">
-                <!-- Loaded dynamically by JS -->
-            </div>
-        </section>
+        <!-- Navigation Tabs -->
+        <nav class="tab-nav">
+            <button type="button" class="tab-btn active" data-tab="tab-single">🔍 Single Incident Assessment</button>
+            <button type="button" class="tab-btn" data-tab="tab-irad">📡 iRAD Real-Time Feed</button>
+            <button type="button" class="tab-btn" data-tab="tab-whatif">⚖️ "What-If" Intervention Simulator</button>
+            <button type="button" class="tab-btn" data-tab="tab-batch">📁 Batch Incident Audit (CSV)</button>
+            <button type="button" class="tab-btn" data-tab="tab-morth">📊 MoRTH Official Benchmarks</button>
+        </nav>
 
-        <!-- Form & Output 2-column layout -->
-        <div class="main-grid">
-            <!-- Left: Inputs -->
-            <section class="card">
-                <h2>Scenario Inputs</h2>
-                <form id="scenarioForm">
-                    <fieldset class="form-fieldset">
-                        <legend>Road & Environment</legend>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="road_category">Road Category:</label>
-                                <select id="road_category" name="road_category"></select>
-                            </div>
-                            <div class="form-group">
-                                <label for="road_type">Road Geometry:</label>
-                                <select id="road_type" name="road_type"></select>
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="weather_condition">Weather:</label>
-                                <select id="weather_condition" name="weather_condition"></select>
-                            </div>
-                            <div class="form-group">
-                                <label for="road_surface">Road Surface:</label>
-                                <select id="road_surface" name="road_surface"></select>
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="light_condition">Lighting:</label>
-                                <select id="light_condition" name="light_condition"></select>
-                            </div>
-                            <div class="form-group">
-                                <label for="junction_type">Junction Type:</label>
-                                <select id="junction_type" name="junction_type"></select>
-                            </div>
-                        </div>
-                    </fieldset>
-
-                    <fieldset class="form-fieldset">
-                        <legend>Vehicles & Speed</legend>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="primary_vehicle_type">Primary Vehicle:</label>
-                                <select id="primary_vehicle_type" name="primary_vehicle_type"></select>
-                            </div>
-                            <div class="form-group">
-                                <label for="secondary_vehicle_type">Secondary Vehicle:</label>
-                                <select id="secondary_vehicle_type" name="secondary_vehicle_type"></select>
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="collision_type">Collision Mechanism:</label>
-                                <select id="collision_type" name="collision_type"></select>
-                            </div>
-                            <div class="form-group">
-                                <label for="speed_limit_kmh">Speed Limit:</label>
-                                <select id="speed_limit_kmh" name="speed_limit_kmh"></select>
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="speed_delta_kmh">Speed Delta (vs Limit): <strong id="speedDeltaValue">+0 km/h</strong></label>
-                                <input type="range" id="speed_delta_kmh" name="speed_delta_kmh" min="-40" max="80" value="0">
-                            </div>
-                            <div class="form-group">
-                                <label for="occupants_count">Total Occupants:</label>
-                                <input type="number" id="occupants_count" name="occupants_count" min="1" max="80" value="4">
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="number_of_vehicles">Number of Vehicles:</label>
-                                <input type="number" id="number_of_vehicles" name="number_of_vehicles" min="1" max="25" value="2">
-                            </div>
-                        </div>
-                    </fieldset>
-
-                    <fieldset class="form-fieldset">
-                        <legend>Behavioral Factors (Check if applicable)</legend>
-                        <div class="checkbox-grid">
-                            <label><input type="checkbox" id="is_wrong_side" name="is_wrong_side"> Wrong-Side Driving</label>
-                            <label><input type="checkbox" id="is_overloaded" name="is_overloaded"> Overloaded / Triple Riding</label>
-                            <label><input type="checkbox" id="safety_gear_violation" name="safety_gear_violation"> No Helmet / Seatbelt</label>
-                            <label><input type="checkbox" id="high_beam_hazard" name="high_beam_hazard"> High-Beam Glare</label>
-                            <label><input type="checkbox" id="stray_animal_hazard" name="stray_animal_hazard"> Stray Animal Hazard</label>
-                            <label><input type="checkbox" id="drowsy_window" name="drowsy_window"> Drowsy Window (Night)</label>
-                            <label><input type="checkbox" id="pothole_or_speedbreaker" name="pothole_or_speedbreaker"> Pothole / Speed-Breaker</label>
-                        </div>
-                    </fieldset>
-
-                    <div class="form-actions">
-                        <button type="submit" id="btnPredict" class="btn btn-primary">Run Assessment</button>
-                        <button type="button" id="btnReset" class="btn btn-secondary">Reset</button>
-                    </div>
-                </form>
+        <!-- ===================================================================
+             TAB 1: SINGLE INCIDENT ASSESSMENT
+             =================================================================== -->
+        <main id="tab-single" class="tab-content active">
+            <!-- Preset Scenario Buttons -->
+            <section class="card mb-md">
+                <div class="card-title-row">
+                    <h2>Select Benchmark Scenario</h2>
+                    <span class="text-muted text-xs">Click any preset button for immediate assessment</span>
+                </div>
+                <div class="preset-buttons" id="presetsGrid">
+                    <!-- Loaded dynamically -->
+                </div>
             </section>
 
-            <!-- Right: Simple Output -->
-            <section class="card output-card">
-                <h2>Prediction Output</h2>
-                <div class="active-tag">Scenario: <strong id="scenarioLabel">Yamuna Expressway Fog Pileup</strong></div>
-                <div id="loadingIndicator" class="loading-text hidden">Processing assessment...</div>
+            <!-- Main Input & Output Grid -->
+            <div class="main-grid">
+                <!-- Left: Form Inputs -->
+                <section class="card">
+                    <h2>Scenario Parameters</h2>
+                    <form id="scenarioForm">
+                        <fieldset class="form-fieldset">
+                            <legend>1. Road & Environment</legend>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="road_category">Road Category:</label>
+                                    <select id="road_category" name="road_category"></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="road_type">Road Geometry:</label>
+                                    <select id="road_type" name="road_type"></select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="weather_condition">Weather Condition:</label>
+                                    <select id="weather_condition" name="weather_condition"></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="road_surface">Road Surface:</label>
+                                    <select id="road_surface" name="road_surface"></select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="light_condition">Lighting:</label>
+                                    <select id="light_condition" name="light_condition"></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="junction_type">Junction Type:</label>
+                                    <select id="junction_type" name="junction_type"></select>
+                                </div>
+                            </div>
+                        </fieldset>
 
-                <!-- Basic Output Summary Box -->
-                <div class="output-box" id="severityCard">
-                    <div class="output-row">
-                        <span class="out-label">Predicted Severity:</span>
-                        <span class="out-val" id="severityValue">FATAL</span>
-                    </div>
-                    <div class="out-sub" id="severityBadge">High lethality risk</div>
+                        <fieldset class="form-fieldset">
+                            <legend>2. Vehicles & Kinematics</legend>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="primary_vehicle_type">Primary Vehicle:</label>
+                                    <select id="primary_vehicle_type" name="primary_vehicle_type"></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="secondary_vehicle_type">Secondary Vehicle / Obstacle:</label>
+                                    <select id="secondary_vehicle_type" name="secondary_vehicle_type"></select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="collision_type">Collision Mechanism:</label>
+                                    <select id="collision_type" name="collision_type"></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="speed_limit_kmh">Speed Limit:</label>
+                                    <select id="speed_limit_kmh" name="speed_limit_kmh"></select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="speed_delta_kmh">Overspeeding Delta: <strong id="speedDeltaValue">+0 km/h</strong></label>
+                                    <input type="range" id="speed_delta_kmh" name="speed_delta_kmh" min="-40" max="80" value="0">
+                                </div>
+                                <div class="form-group">
+                                    <label for="occupants_count">Total Occupants:</label>
+                                    <input type="number" id="occupants_count" name="occupants_count" min="1" max="80" value="4">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="number_of_vehicles">Number of Vehicles:</label>
+                                    <input type="number" id="number_of_vehicles" name="number_of_vehicles" min="1" max="25" value="2">
+                                </div>
+                            </div>
+                        </fieldset>
 
-                    <div class="output-row" style="margin-top: 15px;">
-                        <span class="out-label">Disaster Risk Index:</span>
-                        <span class="out-val" id="driValue">98.0%</span>
-                    </div>
-                    <div class="out-sub" id="driBand">EXTREME DISASTER</div>
+                        <fieldset class="form-fieldset">
+                            <legend>3. Behavioral Violations & Hazards</legend>
+                            <div class="checkbox-grid">
+                                <label><input type="checkbox" id="is_wrong_side"> ⛔ Wrong-Side Driving</label>
+                                <label><input type="checkbox" id="is_overloaded"> 📦 Overloading / Triple Riding</label>
+                                <label><input type="checkbox" id="safety_gear_violation"> 🪖 No Helmet / Seatbelt</label>
+                                <label><input type="checkbox" id="high_beam_hazard"> 💡 High-Beam Glare</label>
+                                <label><input type="checkbox" id="stray_animal_hazard"> 🐄 Stray Animal Hazard</label>
+                                <label><input type="checkbox" id="drowsy_window"> 🥱 Drowsy Window (02-05 AM)</label>
+                                <label><input type="checkbox" id="pothole_or_speedbreaker"> 🕳️ Pothole / Speed-Breaker</label>
+                            </div>
+                        </fieldset>
 
-                    <div class="output-row" style="margin-top: 15px;">
-                        <span class="out-label">Expected Casualties:</span>
-                        <span class="out-val" id="casualtiesValue">5.4</span>
+                        <div class="form-actions">
+                            <button type="submit" id="btnPredict" class="btn btn-primary">Run Assessment</button>
+                            <button type="button" id="btnReset" class="btn btn-secondary">Reset</button>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- Right: Output Dashboard -->
+                <section class="card output-card">
+                    <div class="card-title-row">
+                        <h2>Assessment Results</h2>
+                        <span class="active-badge" id="scenarioLabel">Yamuna Expressway Fog Pileup</span>
                     </div>
-                    <div class="out-sub" id="occupantsAnalyzed">from 6 occupants involved</div>
+
+                    <div id="loadingIndicator" class="loading-text hidden">Processing LightGBM multi-task inference...</div>
+
+                    <!-- Primary KPI Box -->
+                    <div class="kpi-banner" id="severityCard">
+                        <div class="kpi-col">
+                            <span class="kpi-label">Predicted Severity</span>
+                            <div class="kpi-main-val" id="severityValue">FATAL</div>
+                            <div class="kpi-desc" id="severityBadge">High lethality impact probability</div>
+                        </div>
+                        <div class="kpi-col">
+                            <span class="kpi-label">Disaster Risk Index</span>
+                            <div class="kpi-main-val" id="driValue">98.0%</div>
+                            <div class="dri-track">
+                                <div id="driMeter" class="dri-bar" style="width: 98%;"></div>
+                            </div>
+                            <div class="kpi-desc" id="driBand">EXTREME DISASTER RISK</div>
+                        </div>
+                        <div class="kpi-col">
+                            <span class="kpi-label">Forecasted Casualties</span>
+                            <div class="kpi-main-val" id="casualtiesValue">5.4</div>
+                            <div class="kpi-desc" id="occupantsAnalyzed">from 6 occupants involved</div>
+                        </div>
+                    </div>
+
+                    <!-- Granular Probabilities Breakdown -->
+                    <div class="section-block">
+                        <h3>Calibrated Severity Probabilities</h3>
+                        <div class="stacked-bar">
+                            <div id="stackFatal" class="stack-seg seg-fatal" style="width: 48.2%;"></div>
+                            <div id="stackGrievous" class="stack-seg seg-grievous" style="width: 39.1%;"></div>
+                            <div id="stackMinor" class="stack-seg seg-minor" style="width: 12.7%;"></div>
+                        </div>
+                        <table class="simple-table mt-xs">
+                            <thead>
+                                <tr>
+                                    <th>Severity Class</th>
+                                    <th>Probability</th>
+                                    <th>Operational Risk Level</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="dot dot-fatal"></span> Fatal Outcome</td>
+                                    <td id="fatalPct"><strong>48.2%</strong></td>
+                                    <td><span class="status-tag tag-fatal">Critical</span></td>
+                                </tr>
+                                <tr>
+                                    <td><span class="dot dot-grievous"></span> Grievous Injury (Hospitalization)</td>
+                                    <td id="grievousPct"><strong>39.1%</strong></td>
+                                    <td><span class="status-tag tag-grievous">Elevated</span></td>
+                                </tr>
+                                <tr>
+                                    <td><span class="dot dot-minor"></span> Minor / Property Damage Only</td>
+                                    <td id="minorPct"><strong>12.7%</strong></td>
+                                    <td><span class="status-tag tag-minor">Low</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Threat Assessment & Drivers -->
+                    <div class="section-block">
+                        <h3>Identified Risk Drivers & Escalations</h3>
+                        <p id="urgencyText" class="urgency-summary">Multiple compounding hazards present. Immediate catastrophic pileup probable.</p>
+                        <ul id="threatsList" class="simple-list"></ul>
+                    </div>
+
+                    <!-- Directives & Emergency Protocol -->
+                    <div class="section-block">
+                        <h3>Actionable Directives & Containment</h3>
+                        <div class="helpline-bar">
+                            <span>📞 <strong>NHAI Helpline:</strong> 1033</span>
+                            <span>🚨 <strong>Police / Medical:</strong> 112</span>
+                        </div>
+                        <h4>Immediate In-Transit Directives:</h4>
+                        <ul id="directivesList" class="simple-list"></ul>
+                        <h4>Secondary Crash Prevention (Golden Hour):</h4>
+                        <ul id="secondaryList" class="simple-list"></ul>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Session History Table -->
+            <section class="card mt-md">
+                <div class="card-title-row">
+                    <h2>Session Evaluation Log</h2>
+                    <span class="text-muted text-xs">Recent assessments conducted during this browser session</span>
+                </div>
+                <table class="simple-table" id="sessionHistoryTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Time</th>
+                            <th>Scenario / Road</th>
+                            <th>Predicted Severity</th>
+                            <th>DRI Score</th>
+                            <th>Casualties</th>
+                            <th>Primary Hazard</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sessionHistoryBody">
+                        <tr>
+                            <td colspan="7" class="text-center text-muted">No evaluations recorded yet. Run an assessment above.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+        </main>
+
+        <!-- ===================================================================
+             TAB 2: "WHAT-IF" INTERVENTION SIMULATOR
+             =================================================================== -->
+        <main id="tab-whatif" class="tab-content">
+            <section class="card">
+                <div class="card-title-row">
+                    <h2>"What-If" Counterfactual Intervention Simulator</h2>
+                    <span class="text-muted text-xs">Compare a high-risk baseline against safety interventions to quantify lives saved</span>
+                </div>
+                <p class="mb-sm text-sm text-muted">
+                    Test safety measures (e.g. speed capping, helmet compliance, eliminating wrong-side driving) and see the reduction in fatalities and casualties.
+                </p>
+
+                <!-- Comparison Input Columns -->
+                <div class="whatif-grid">
+                    <!-- Column A: Baseline -->
+                    <div class="whatif-col">
+                        <div class="col-header header-baseline">
+                            <h3>⚠️ Baseline Condition (High-Risk)</h3>
+                            <button type="button" class="btn btn-xs btn-outline" id="btnCopyFromSingle">Copy from Tab 1</button>
+                        </div>
+                        <div class="form-group mt-xs">
+                            <label>Road Category:</label>
+                            <select id="wi_base_road" class="form-control"></select>
+                        </div>
+                        <div class="form-group mt-xs">
+                            <label>Weather Condition:</label>
+                            <select id="wi_base_weather" class="form-control"></select>
+                        </div>
+                        <div class="form-group mt-xs">
+                            <label>Primary Vehicle:</label>
+                            <select id="wi_base_veh" class="form-control"></select>
+                        </div>
+                        <div class="form-group mt-xs">
+                            <label>Secondary Vehicle:</label>
+                            <select id="wi_base_sec_veh" class="form-control"></select>
+                        </div>
+                        <div class="form-row mt-xs">
+                            <div class="form-group">
+                                <label>Speed Limit:</label>
+                                <select id="wi_base_limit" class="form-control"></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Delta (km/h):</label>
+                                <input type="number" id="wi_base_delta" value="20" class="form-control">
+                            </div>
+                        </div>
+                        <div class="checkbox-stack mt-xs">
+                            <label><input type="checkbox" id="wi_base_wrong" checked> Wrong-Side Driving</label>
+                            <label><input type="checkbox" id="wi_base_gear" checked> Safety Gear Violation</label>
+                            <label><input type="checkbox" id="wi_base_overload"> Overloaded Cargo/Pillion</label>
+                        </div>
+                    </div>
+
+                    <!-- Column B: Mitigated -->
+                    <div class="whatif-col">
+                        <div class="col-header header-mitigated">
+                            <h3>🛡️ Mitigated Condition (Safety Enforced)</h3>
+                            <span class="badge-safe">Intervention Plan</span>
+                        </div>
+                        <div class="form-group mt-xs">
+                            <label>Road Category:</label>
+                            <select id="wi_mit_road" class="form-control"></select>
+                        </div>
+                        <div class="form-group mt-xs">
+                            <label>Weather Condition:</label>
+                            <select id="wi_mit_weather" class="form-control"></select>
+                        </div>
+                        <div class="form-group mt-xs">
+                            <label>Primary Vehicle:</label>
+                            <select id="wi_mit_veh" class="form-control"></select>
+                        </div>
+                        <div class="form-group mt-xs">
+                            <label>Secondary Vehicle:</label>
+                            <select id="wi_mit_sec_veh" class="form-control"></select>
+                        </div>
+                        <div class="form-row mt-xs">
+                            <div class="form-group">
+                                <label>Speed Limit:</label>
+                                <select id="wi_mit_limit" class="form-control"></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Delta (km/h):</label>
+                                <input type="number" id="wi_mit_delta" value="-10" class="form-control">
+                            </div>
+                        </div>
+                        <div class="checkbox-stack mt-xs">
+                            <label><input type="checkbox" id="wi_mit_wrong"> Wrong-Side Driving</label>
+                            <label><input type="checkbox" id="wi_mit_gear"> Safety Gear Violation</label>
+                            <label><input type="checkbox" id="wi_mit_overload"> Overloaded Cargo/Pillion</label>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Probability breakdown table -->
-                <div class="section-block">
-                    <h3>Probability Breakdown</h3>
-                    <table class="simple-table">
+                <div class="text-center mt-md">
+                    <button type="button" id="btnRunWhatIf" class="btn btn-primary btn-lg">⚖️ Compare Intervention Impact</button>
+                </div>
+
+                <!-- Comparison Result Callout -->
+                <div class="whatif-result-card mt-md" id="whatifResultsBox">
+                    <div class="card-title-row">
+                        <h3>Intervention Impact Assessment</h3>
+                        <span id="whatifBadge" class="status-tag tag-minor">Safety Gain Quantified</span>
+                    </div>
+
+                    <div class="impact-metrics-row">
+                        <div class="impact-metric">
+                            <span class="impact-num text-success" id="impactFatalReduction">-0.0%</span>
+                            <span class="impact-lbl">Fatal Probability Reduction</span>
+                        </div>
+                        <div class="impact-metric">
+                            <span class="impact-num text-success" id="impactLivesSaved">0.0</span>
+                            <span class="impact-lbl">Estimated Casualties Reduced</span>
+                        </div>
+                        <div class="impact-metric">
+                            <span class="impact-num text-success" id="impactDriReduction">-0.0%</span>
+                            <span class="impact-lbl">Disaster Risk Index Cut</span>
+                        </div>
+                        <div class="impact-metric">
+                            <span class="impact-num" id="impactSeverityShift">FATAL &rarr; MINOR</span>
+                            <span class="impact-lbl">Severity Grade Transition</span>
+                        </div>
+                    </div>
+
+                    <div class="comparison-table-wrap mt-sm">
+                        <table class="simple-table">
+                            <thead>
+                                <tr>
+                                    <th>Parameter</th>
+                                    <th>Baseline Condition</th>
+                                    <th>Mitigated Condition</th>
+                                    <th>Net Safety Benefit</th>
+                                </tr>
+                            </thead>
+                            <tbody id="whatifTableBody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- ===================================================================
+             TAB 3: BATCH INCIDENT AUDIT (CSV)
+             =================================================================== -->
+        <main id="tab-batch" class="tab-content">
+            <section class="card">
+                <div class="card-title-row">
+                    <h2>Bulk Incident & Corridor Risk Audit</h2>
+                    <a href="/api/sample_csv" class="btn btn-xs btn-outline" download>📥 Download Sample CSV Template</a>
+                </div>
+                <p class="text-sm text-muted mb-sm">
+                    Upload a batch CSV containing road records or accident history to audit risk scores and identify high-priority hazard corridors.
+                </p>
+
+                <!-- Upload Area -->
+                <div class="upload-dropzone" id="dropzone">
+                    <input type="file" id="batchFileInput" accept=".csv" style="display: none;">
+                    <div class="drop-content">
+                        <span class="drop-icon">📁</span>
+                        <p><strong>Click to browse</strong> or drag & drop an incident CSV file</p>
+                        <span class="text-xs text-muted">Supports .csv with road_category, weather, vehicle types, speed</span>
+                    </div>
+                </div>
+
+                <div class="text-center mt-sm">
+                    <button type="button" id="btnRunBatchSample" class="btn btn-secondary">⚡ Or Load 4 Pre-Configured Corridor Scenarios</button>
+                </div>
+
+                <!-- Batch Summary KPIs -->
+                <div class="batch-summary-grid mt-md hidden" id="batchSummarySection">
+                    <div class="stat-card">
+                        <span class="stat-card-num" id="batchTotalCount">0</span>
+                        <span class="stat-card-lbl">Total Records Assessed</span>
+                    </div>
+                    <div class="stat-card stat-danger">
+                        <span class="stat-card-num" id="batchFatalCount">0</span>
+                        <span class="stat-card-lbl">Fatal Outcomes</span>
+                    </div>
+                    <div class="stat-card stat-warning">
+                        <span class="stat-card-num" id="batchGrievousCount">0</span>
+                        <span class="stat-card-lbl">Grievous Injuries</span>
+                    </div>
+                    <div class="stat-card stat-success">
+                        <span class="stat-card-num" id="batchMinorCount">0</span>
+                        <span class="stat-card-lbl">Minor / Property</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-card-num" id="batchAvgDri">0.0%</span>
+                        <span class="stat-card-lbl">Corridor Avg DRI</span>
+                    </div>
+                </div>
+
+                <!-- Results Table -->
+                <div class="mt-md hidden" id="batchTableSection">
+                    <div class="card-title-row">
+                        <h3>Corridor Incident Assessment Register</h3>
+                        <button type="button" id="btnExportBatchCsv" class="btn btn-xs btn-outline">📥 Export Assessed CSV</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="simple-table" id="batchResultsTable">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Corridor / Label</th>
+                                    <th>Road Category</th>
+                                    <th>Weather</th>
+                                    <th>Vehicle</th>
+                                    <th>Overspeeding</th>
+                                    <th>Predicted Severity</th>
+                                    <th>Casualties</th>
+                                    <th>DRI Score</th>
+                                    <th>Prescribed Priority Directive</th>
+                                </tr>
+                            </thead>
+                            <tbody id="batchResultsBody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- ===================================================================
+             TAB 4: MORTH & IRAD BENCHMARKS
+             =================================================================== -->
+        <main id="tab-morth" class="tab-content">
+            <section class="card">
+                <div class="card-title-row">
+                    <h2>Official MoRTH 2022-2023 National Benchmarks</h2>
+                    <span class="text-xs text-muted">Ministry of Road Transport & Highways, TRW Official Reports</span>
+                </div>
+                <p class="text-sm text-muted mb-sm">
+                    These empirical distributions calibrate the LightGBM multi-task models and Disaster Risk Index (DRI) calculations.
+                </p>
+
+                <!-- Macro Stats Row -->
+                <div class="batch-summary-grid mb-md">
+                    <div class="stat-card">
+                        <span class="stat-card-num">480,583</span>
+                        <span class="stat-card-lbl">National Accidents (2023)</span>
+                    </div>
+                    <div class="stat-card stat-danger">
+                        <span class="stat-card-num">172,890</span>
+                        <span class="stat-card-lbl">Annual Road Fatalities</span>
+                    </div>
+                    <div class="stat-card stat-warning">
+                        <span class="stat-card-num">462,825</span>
+                        <span class="stat-card-lbl">Persons Grievously Injured</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-card-num">1 in 3 min</span>
+                        <span class="stat-card-lbl">Fatality Frequency</span>
+                    </div>
+                </div>
+
+                <!-- Structured Reference Tables -->
+                <div class="morth-tables-grid">
+                    <div>
+                        <h3>Road Hierarchy Distribution</h3>
+                        <table class="simple-table mt-xs">
+                            <thead>
+                                <tr>
+                                    <th>Road Category</th>
+                                    <th>% of National Deaths</th>
+                                    <th>Operational Context</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>National Highways (NH)</strong></td>
+                                    <td><strong class="text-danger">36.2%</strong></td>
+                                    <td>Only ~2.1% of road network length</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>State Highways (SH)</strong></td>
+                                    <td><strong>24.3%</strong></td>
+                                    <td>High speeds on undivided carriageways</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Other (MDR / PMGSY / City)</strong></td>
+                                    <td><strong>39.5%</strong></td>
+                                    <td>Uncontrolled access & mixed traffic</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div>
+                        <h3>Vulnerable User Breakdown</h3>
+                        <table class="simple-table mt-xs">
+                            <thead>
+                                <tr>
+                                    <th>Vehicle Category</th>
+                                    <th>% Victim Share</th>
+                                    <th>Primary Risk Factor</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Two-Wheelers (2W)</strong></td>
+                                    <td><strong class="text-danger">44.8%</strong></td>
+                                    <td>No helmet (71.2% of 2W deaths)</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Pedestrians</strong></td>
+                                    <td><strong>19.8%</strong></td>
+                                    <td>Highway crossings without footbridges</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Cars / Taxis</strong></td>
+                                    <td><strong>14.1%</strong></td>
+                                    <td>High-speed head-on & rollovers</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Heavy Goods Trucks</strong></td>
+                                    <td><strong>9.2%</strong></td>
+                                    <td>Mass mismatch & unlit breakdowns</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="section-block mt-md">
+                    <h3>Primary Behavioral Violations Contributing to Fatalities</h3>
+                    <div class="violation-badges-row mt-xs">
+                        <div class="violation-card">
+                            <span class="v-pct">68.1%</span>
+                            <span class="v-title">Overspeeding</span>
+                            <span class="v-desc">327,277 crashes caused by speed exceeding reaction distance</span>
+                        </div>
+                        <div class="violation-card">
+                            <span class="v-pct">71.2%</span>
+                            <span class="v-title">Helmet Non-Compliance</span>
+                            <span class="v-desc">52,150 rider/pillion fatalities caused by head trauma</span>
+                        </div>
+                        <div class="violation-card">
+                            <span class="v-pct">5.5%</span>
+                            <span class="v-title">Wrong-Side Driving</span>
+                            <span class="v-desc">26,410 head-on collisions at median openings</span>
+                        </div>
+                        <div class="violation-card">
+                            <span class="v-pct">11.2%</span>
+                            <span class="v-title">No Seatbelt</span>
+                            <span class="v-desc">17,820 fatal cabin passenger ejections</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- ===================================================================
+             TAB 5: IRAD REAL-TIME INCIDENT FEED
+             =================================================================== -->
+        <main id="tab-irad" class="tab-content">
+            <section class="card">
+                <div class="card-title-row">
+                    <div>
+                        <h2>📡 iRAD / eDAR Live Accident Stream</h2>
+                        <span class="text-xs text-muted">Integrated Road Accident Database &bull; Real-time Police Dispatch & Trauma Register</span>
+                    </div>
+                    <div class="header-right">
+                        <span class="status-tag tag-minor">🟢 Connected to iRAD Master DB</span>
+                        <button type="button" id="btnSimulateIradLive" class="btn btn-primary btn-xs">🚨 Simulate Incoming Crash Alert</button>
+                    </div>
+                </div>
+                <p class="text-sm text-muted mb-sm">
+                    Live road collision records reported by state traffic police and highway patrols (MoRTH / NIC / IIT Madras schema). Each record is scored live by the RoadSense Multi-Task AI Engine.
+                </p>
+
+                <!-- Filter & Control Toolbar -->
+                <div class="card mb-sm" style="background-color: #f8fafc; padding: 10px 14px;">
+                    <div class="form-row" style="margin-bottom: 0; align-items: center;">
+                        <div class="form-group" style="max-width: 250px;">
+                            <label for="iradStateFilter">Filter by State / UT:</label>
+                            <select id="iradStateFilter" class="form-control">
+                                <option value="All">All States / UTs</option>
+                                <option value="Uttar Pradesh">Uttar Pradesh</option>
+                                <option value="Maharashtra">Maharashtra</option>
+                                <option value="Karnataka">Karnataka</option>
+                                <option value="Haryana">Haryana</option>
+                                <option value="Tamil Nadu">Tamil Nadu</option>
+                                <option value="Delhi">Delhi</option>
+                                <option value="Andhra Pradesh">Andhra Pradesh</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="max-width: 200px;">
+                            <label>&nbsp;</label>
+                            <button type="button" id="btnRefreshIrad" class="btn btn-secondary">🔄 Refresh Live Feed</button>
+                        </div>
+                        <div class="stat-pill" style="margin-left: auto;">
+                            <span class="stat-num" id="iradTotalIncidents">0</span>
+                            <span class="stat-lbl">Live Records</span>
+                        </div>
+                        <div class="stat-pill stat-danger">
+                            <span class="stat-num" id="iradTotalFatal">0</span>
+                            <span class="stat-lbl">Confirmed Deaths</span>
+                        </div>
+                        <div class="stat-pill stat-warning">
+                            <span class="stat-num" id="iradTotalGrievous">0</span>
+                            <span class="stat-lbl">Grievously Injured</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- iRAD Live Incident Table -->
+                <div class="table-responsive">
+                    <table class="simple-table" id="iradIncidentsTable">
                         <thead>
                             <tr>
-                                <th>Outcome</th>
-                                <th>Probability</th>
+                                <th>iRAD Accident ID</th>
+                                <th>Reported Time</th>
+                                <th>State & District</th>
+                                <th>Corridor / Highway</th>
+                                <th>Primary & Secondary Vehicle</th>
+                                <th>Actual Casualties</th>
+                                <th>AI Severity</th>
+                                <th>Disaster Risk Index</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="iradIncidentsBody">
                             <tr>
-                                <td>Fatal</td>
-                                <td id="fatalPct"><strong>48.2%</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Grievous Injury</td>
-                                <td id="grievousPct"><strong>39.1%</strong></td>
-                            </tr>
-                            <tr>
-                                <td>Minor / Property Damage</td>
-                                <td id="minorPct"><strong>12.7%</strong></td>
+                                <td colspan="9" class="text-center text-muted">Loading live iRAD database incidents...</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
-
-                <!-- Threat Assessment -->
-                <div class="section-block">
-                    <h3>Threat Assessment</h3>
-                    <p id="urgencyText">Multiple compounding hazards present. Immediate catastrophic pileup probable.</p>
-                    <ul id="threatsList" class="simple-list"></ul>
-                </div>
-
-                <!-- Actionable Directives -->
-                <div class="section-block">
-                    <h3>Safety & Emergency Directives</h3>
-                    <div class="helpline-notice">
-                        <strong>Emergency Numbers:</strong> NHAI Expressway: <strong>1033</strong> | Police / Ambulance: <strong>112</strong>
-                    </div>
-                    <h4>In-Transit Prevention:</h4>
-                    <ul id="directivesList" class="simple-list"></ul>
-                    <h4>Secondary Crash Containment:</h4>
-                    <ul id="secondaryList" class="simple-list"></ul>
-                </div>
             </section>
-        </div>
+        </main>
 
         <!-- Footer -->
         <footer class="footer">
-            <p>RoadSense &bull; MoRTH 2022-2023 & iRAD Benchmarked Road Collision Analysis</p>
+            <p>RoadSense AI Decision-Support &bull; Aligned with MoRTH TRW 2022-2023 & iRAD Incident Protocol</p>
         </footer>
     </div>
 
-    <!-- Script -->
+    <!-- Scripts -->
     <script src="/static/js/app.js"></script>
 </body>
 </html>
