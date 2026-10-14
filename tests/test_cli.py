@@ -15,7 +15,7 @@ def test_cli_quick():
     assert result.returncode == 0
     assert "PROBABLE PREDICTION SUMMARY" in result.stdout
     assert "Probable Collision Outcome" in result.stdout
-    assert "Disaster Risk Escalation" in result.stdout
+    assert "Expected Casualties" in result.stdout
 
 
 def test_cli_preset():

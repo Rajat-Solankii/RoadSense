@@ -53,13 +53,15 @@ def test_predict_scenario_structure(models):
     assert "task_c" in result
     assert result["task_c"]["predicted_casualties"] >= 1.0
 
-    # Check Disaster Engine
-    assert "disaster" in result
-    assert 0.0 <= result["disaster"]["disaster_risk_index"] <= 100.0
+    # Check Top-level summary keys
+    assert "prediction" in result
+    assert "probabilities" in result
+    assert "predicted_casualties" in result
+    assert "is_dangerous" in result
 
 
 def test_all_presets_valid(models):
-    """Verify all curated real-world presets execute and return non-null predictions."""
+    """Verify all curated benchmark presets execute and return valid predictions."""
     presets = get_preset_scenarios()
     assert len(presets) >= 4
 
@@ -69,4 +71,4 @@ def test_all_presets_valid(models):
         assert res["task_a"]["prediction"] is not None
         assert res["task_b"]["prediction"] is not None
         assert res["task_c"]["predicted_casualties"] >= 1.0
-        assert res["disaster"]["disaster_risk_index"] > 0
+        assert res["prediction"] in ["FATAL", "GRIEVOUS INJURY", "MINOR / PROPERTY DAMAGE"]

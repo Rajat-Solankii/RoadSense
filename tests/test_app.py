@@ -1,5 +1,5 @@
 """
-Unit & Integration Tests for RoadSense Professional Web Application
+Unit & Integration Tests for RoadSense Prediction Web Server
 """
 
 import pytest
@@ -20,8 +20,8 @@ def test_index_route(client):
     response = client.get("/")
     assert response.status_code == 200
     assert b"RoadSense" in response.data
-    assert b"Single Incident Assessment" in response.data
-    assert b"What-If" in response.data
+    assert b"Incident Prediction" in response.data
+    assert b"Batch Audit (CSV)" in response.data
 
 
 def test_api_presets_route(client):
@@ -64,8 +64,11 @@ def test_api_predict_route(client):
         "collision_type": "Rear-End / Chain Pileup",
         "speed_limit_kmh": 120,
         "speed_delta_kmh": -10,
-        "number_of_vehicles": 5,
-        "occupants_count": 6,
+        "hour": 6,
+        "day_of_week": 1,
+        "month": 1,
+        "number_of_vehicles": 3,
+        "occupants_count": 5,
         "is_wrong_side": 0,
         "is_overloaded": 0,
         "safety_gear_violation": 1,
@@ -80,54 +83,14 @@ def test_api_predict_route(client):
         content_type="application/json"
     )
     assert response.status_code == 200
-    res_json = json.loads(response.data)
-    assert res_json["status"] == "success"
-    results = res_json["results"]
-    assert "task_a" in results
-    assert "task_b" in results
-    assert "task_c" in results
-    assert "disaster" in results
-    assert "prediction" in results["task_b"]
-    assert "disaster_risk_index" in results["disaster"]
-
-
-def test_api_whatif_route(client):
-    """Test What-If counterfactual comparison endpoint."""
-    payload = {
-        "baseline": {
-            "road_category": "Expressway",
-            "weather_condition": "Dense Winter Fog / Smog",
-            "primary_vehicle_type": "Car / Hatchback / Sedan",
-            "secondary_vehicle_type": "Heavy Goods Vehicle (Multi-Axle Truck / Dumper / Trailer)",
-            "speed_limit_kmh": 120,
-            "speed_delta_kmh": 20,
-            "is_wrong_side": 1,
-            "safety_gear_violation": 1,
-        },
-        "mitigated": {
-            "road_category": "Expressway",
-            "weather_condition": "Dense Winter Fog / Smog",
-            "primary_vehicle_type": "Car / Hatchback / Sedan",
-            "secondary_vehicle_type": "Heavy Goods Vehicle (Multi-Axle Truck / Dumper / Trailer)",
-            "speed_limit_kmh": 120,
-            "speed_delta_kmh": -20,
-            "is_wrong_side": 0,
-            "safety_gear_violation": 0,
-        }
-    }
-    response = client.post(
-        "/api/whatif",
-        data=json.dumps(payload),
-        content_type="application/json"
-    )
-    assert response.status_code == 200
     data = json.loads(response.data)
     assert data["status"] == "success"
-    assert "impact" in data
-    impact = data["impact"]
-    assert "fatal_prob_reduction_pct" in impact
-    assert "casualties_saved" in impact
-    assert "dri_reduction_pct" in impact
+    assert "results" in data
+    res = data["results"]
+    assert "prediction" in res
+    assert "probabilities" in res
+    assert "predicted_casualties" in res
+    assert "is_dangerous" in res
 
 
 def test_api_batch_route(client):
@@ -146,6 +109,10 @@ Segment B,National Highway (NH),Heavy Monsoon / Waterlogged,Two-Wheeler (Motorcy
     assert "summary" in res
     assert res["summary"]["total_records"] == 2
     assert len(res["records"]) == 2
+    first = res["records"][0]
+    assert "severity" in first
+    assert "casualties" in first
+    assert "is_dangerous" in first
 
 
 def test_api_sample_csv_route(client):
@@ -164,33 +131,3 @@ def test_api_morth_stats_route(client):
     assert data["status"] == "success"
     assert isinstance(data["records"], list)
     assert len(data["records"]) > 10
-
-
-def test_api_irad_incidents_route(client):
-    """Test fetching real-time iRAD / eDAR accident records from database."""
-    response = client.get("/api/irad/incidents")
-    assert response.status_code == 200
-    data = json.loads(response.data)
-    assert data["status"] == "success"
-    assert "summary" in data
-    assert "incidents" in data
-    assert len(data["incidents"]) > 0
-    first = data["incidents"][0]
-    assert "accident_id" in first
-    assert "state" in first
-    assert "corridor_name" in first
-    assert "ai_severity_predicted" in first
-    assert "ai_disaster_risk_index" in first
-
-
-def test_api_irad_simulate_live_route(client):
-    """Test simulating a real-time incoming crash alert from highway police dispatch."""
-    response = client.post("/api/irad/simulate_live")
-    assert response.status_code == 200
-    data = json.loads(response.data)
-    assert data["status"] == "success"
-    assert "incident" in data
-    inc = data["incident"]
-    assert "accident_id" in inc
-    assert "ai_severity_predicted" in inc
-    assert "ai_disaster_risk_index" in inc
