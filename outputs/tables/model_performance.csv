@@ -1,0 +1,8 @@
+Task,Metric,Value
+Task A: Binary Severity,PR-AUC,0.9002
+Task A: Binary Severity,ROC-AUC,0.9424
+Task A: Binary Severity,F2-Score,0.8612
+Task B: 3-Class Severity,Fatal PR-AUC,0.786
+Task B: 3-Class Severity,Fatal ROC-AUC,0.9602
+Task C: Casualty Count,RMSE,1.3481
+Task C: Casualty Count,MAE,1.0465

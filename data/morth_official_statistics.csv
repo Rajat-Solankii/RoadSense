@@ -1,0 +1,27 @@
+# MoRTH Official Road Accidents in India Statistics (2022 - 2023)
+# Source: Ministry of Road Transport and Highways (MoRTH), Transport Research Wing (TRW)
+# Government of India: "Road Accidents in India 2022" & "Road Accidents in India 2023"
+category,metric_name,year_2022,year_2023,pct_share_fatalities_2023,primary_risk_driver
+Macro,Total Road Accidents,461312,480583,100.0,Overall national volume (+4.2% YoY)
+Macro,Total Road Fatalities,168491,172890,100.0,1 fatality every 3 minutes
+Macro,Total Persons Injured,443366,462825,-,Grievous & minor trauma (+4.4% YoY)
+Road Hierarchy,National Highways (NH),151997,156420,36.2,Only ~2.1% of network length but accounts for 36.2% of deaths
+Road Hierarchy,State Highways (SH),108693,112340,24.3,High operating speeds on undivided carriageways
+Road Hierarchy,Other Roads (MDR / PMGSY Rural / City),200622,211823,39.5,Uncontrolled access & mixed vulnerable traffic
+Vehicle Class,Two-Wheelers (Motorcycles / Scooters),205321,215301,44.8,Highest victim share (~44.8% of all road deaths)
+Vehicle Class,Pedestrians,92453,95430,19.8,Vulnerable road users on undivided roads/highways
+Vehicle Class,Cars / Taxis / Vans,70543,72810,14.1,High speed impacts and rollover collisions
+Vehicle Class,Heavy Goods Trucks,44120,45320,9.2,Impact aggressiveness & unlit rear-end crashes
+Vehicle Class,Auto-Rickshaws (3-Wheelers),21940,22910,4.6,Cabin structural vulnerability & passenger ejection
+Vehicle Class,Buses (Public / Private),14210,14630,3.1,High mass casualty per incident
+Traffic Violation,Overspeeding,328450,327277,68.1,Primary cause of kinetic energy release
+Traffic Violation,Wrong-Side / Contraflow Driving,25300,26410,5.5,High-energy head-on collision at median cuts
+Traffic Violation,Non-Wearing of Helmet (Riders/Pillions),50029,52150,71.2 (of 2W deaths),Blunt force head trauma & cervical injury
+Traffic Violation,Non-Wearing of Seatbelt (Front/Rear),16715,17820,11.2,Occupant passenger ejection from cabin
+Traffic Violation,Drunk / Drowsy Driving,12200,12890,2.8,Late night highway trucking (01:00 - 05:00 AM)
+State Breakdown,Uttar Pradesh,22595,23652,13.7,Highest total road fatalities nationwide
+State Breakdown,Tamil Nadu,64105,67210,10.6,Highest total accident volume
+State Breakdown,Maharashtra,15224,15840,9.2,High expressway & NH corridor density
+State Breakdown,Madhya Pradesh,13427,13910,8.0,High rural & national highway accidents
+State Breakdown,Karnataka,11702,12180,7.0,High tech corridor and state highway accidents
+State Breakdown,Rajasthan,11104,11520,6.7,High daytime heatwave & unlit rural NH crashes

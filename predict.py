@@ -1,21 +1,25 @@
 """
-RoadSense AI: Interactive Terminal Prediction Demo
-==================================================
-Allows a user to describe a road collision scenario and receive:
-  - Task A: Binary risk assessment (Dangerous vs Minor) with calibrated probability
-  - Task B: 3-Class severity breakdown (Fatal / Serious / Slight)
-  - Task C: Expected casualty count
-  - Risk band classification (Low / Moderate / Elevated / High / Critical)
-  - SHAP-based explanation of the top contributing factors
+RoadSense AI: Indian Road Safety & Disaster Prevention Interactive Tool
+========================================================================
+Assesses collision severity and casualty impact tailored for Indian roads,
+incorporating MoRTH empirical distributions, Indian climatic hazards,
+and behavioral mindset factors (wrong-side driving, overloading, high-beam glare).
+
+Features:
+  - Task A: Binary Severity (Fatal/Grievous vs Minor)
+  - Task B: 3-Class Granular Severity Breakdown (Fatal / Grievous / Minor)
+  - Task C: Expected Casualty Count Regression
+  - Disaster Risk Index (DRI) calculation (0 - 100%)
+  - Preventive Action Directives & "Golden Hour" Emergency Protocol (112 / 1033)
+  - Quick-load real-world Indian scenario presets (Yamuna Fog, Monsoon Ghat, etc.)
 
 Usage:
-  python predict.py              # Interactive mode
-  python predict.py --batch FILE # Batch mode from CSV
+  python predict_indian.py              # Interactive mode with presets
+  python predict_indian.py --batch FILE # Batch CSV mode
 """
 
 import os
 import sys
-import warnings
 import argparse
 import joblib
 import numpy as np
@@ -29,59 +33,49 @@ if hasattr(sys.stderr, "reconfigure"):
 sys.path.insert(0, os.path.abspath("."))
 from src.features import (
     ALL_MODEL_FEATURES,
-    USER_VEHICLE_TYPES,
-    USER_SPEED_LIMITS,
-    USER_WEATHER_OPTIONS,
-    USER_ROAD_TYPE_OPTIONS,
-    map_user_vehicle_input,
+    ROAD_CATEGORIES,
+    ROAD_TYPES,
+    WEATHER_CONDITIONS,
+    ROAD_SURFACES,
+    LIGHT_CONDITIONS,
+    JUNCTION_TYPES,
+    VEHICLE_TYPES,
+    COLLISION_TYPES,
+    SPEED_LIMITS_KMH,
+    derive_most_vulnerable,
 )
-
-warnings.filterwarnings("ignore")
+from src.disaster_prevention import DisasterPreventionEngine
 
 MODELS_DIR = "models"
 
-# ==============================================================================
-# RISK BAND DEFINITIONS
-# Derived from the operating_points_comparison.csv thresholds:
-#   Top 10% threshold ≈ 0.387 → Critical
-#   Top 20% threshold ≈ 0.324 → High  
-#   Top 30% threshold ≈ 0.282 → Elevated
-#   Model's F2 threshold ≈ 0.12 → Moderate (below this = Low)
-# ==============================================================================
-RISK_BANDS = [
-    {"label": "CRITICAL",  "min_prob": 0.387, "color": "\033[91m", "emoji": "🔴", "desc": "Top 10% highest-risk — immediate review"},
-    {"label": "HIGH",      "min_prob": 0.324, "color": "\033[31m", "emoji": "🟠", "desc": "Top 20% highest-risk — priority intervention"},
-    {"label": "ELEVATED",  "min_prob": 0.282, "color": "\033[33m", "emoji": "🟡", "desc": "Top 30% highest-risk — heightened monitoring"},
-    {"label": "MODERATE",  "min_prob": 0.120, "color": "\033[93m", "emoji": "🟢", "desc": "Above decision threshold — standard caution"},
-    {"label": "LOW",       "min_prob": 0.000, "color": "\033[32m", "emoji": "⚪", "desc": "Below threshold — typical road conditions"},
-]
-
+# ANSI Colors
 RESET = "\033[0m"
 BOLD = "\033[1m"
 DIM = "\033[2m"
 CYAN = "\033[96m"
 WHITE = "\033[97m"
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+ORANGE = "\033[33m"
+RED = "\033[91m"
+MAGENTA = "\033[95m"
 UNDERLINE = "\033[4m"
 
 
-def get_risk_band(prob: float) -> dict:
-    """Returns the risk band for a given calibrated probability."""
-    for band in RISK_BANDS:
-        if prob >= band["min_prob"]:
-            return band
-    return RISK_BANDS[-1]
-
-
-# ==============================================================================
-# MODEL LOADING
-# ==============================================================================
-def load_models():
-    """Load all three task models from the models/ directory."""
+def load_models() -> dict:
+    """Loads all three trained models."""
     models = {}
+    path_a = os.path.join(MODELS_DIR, "model_task_a.joblib")
+    if not os.path.exists(path_a):
+        path_a = os.path.join(MODELS_DIR, "indian_model_task_a.joblib")
 
-    path_a = os.path.join(MODELS_DIR, "best_model_task_a.joblib")
-    path_b = os.path.join(MODELS_DIR, "best_model_task_b.joblib")
-    path_c = os.path.join(MODELS_DIR, "best_model_task_c.joblib")
+    path_b = os.path.join(MODELS_DIR, "model_task_b.joblib")
+    if not os.path.exists(path_b):
+        path_b = os.path.join(MODELS_DIR, "indian_model_task_b.joblib")
+
+    path_c = os.path.join(MODELS_DIR, "model_task_c.joblib")
+    if not os.path.exists(path_c):
+        path_c = os.path.join(MODELS_DIR, "indian_model_task_c.joblib")
 
     if os.path.exists(path_a):
         models["A"] = joblib.load(path_a)
@@ -93,414 +87,614 @@ def load_models():
     return models
 
 
-def calibrate_single_prob(calibrator, raw_prob: float) -> float:
-    """Robust probability calibration resilient to cross-version unpickling differences."""
-    if calibrator is None:
-        return float(raw_prob)
-    # Direct analytical sigmoid calculation from fitted weights
-    lr = getattr(calibrator, "calibrator", None)
-    if lr is not None and hasattr(lr, "coef_") and hasattr(lr, "intercept_"):
-        try:
-            w = float(lr.coef_[0][0])
-            b = float(lr.intercept_[0])
-            eps = 1e-6
-            p = np.clip(float(raw_prob), eps, 1.0 - eps)
-            logit = np.log(p / (1.0 - p))
-            z = w * logit + b
-            return float(1.0 / (1.0 + np.exp(-z)))
-        except Exception:
-            pass
-    # Patch multi_class if missing (scikit-learn pickle version drift)
-    if lr is not None and not hasattr(lr, "multi_class"):
-        lr.multi_class = "auto"
-    try:
-        return float(calibrator.predict_proba(np.array([raw_prob]))[0])
-    except Exception:
-        return float(raw_prob)
+# Alias for backward compatibility
+load_indian_models = load_models
 
 
-# ==============================================================================
-# PREDICTION ENGINE
-# ==============================================================================
-def predict_single(models: dict, scenario: dict) -> dict:
-    """
-    Runs all three task models on a single collision scenario.
-    Returns calibrated probabilities, predictions, risk bands, and explanations.
-    """
-    # Build a single-row DataFrame with ALL_MODEL_FEATURES
-    row = {}
+def predict_scenario(models: dict, scenario: dict) -> dict:
+    """Executes multi-task inference and disaster assessment on a scenario."""
+    # Ensure most vulnerable participant is derived
+    if "most_vulnerable_participant" not in scenario:
+        scenario["most_vulnerable_participant"] = derive_most_vulnerable(
+            scenario.get("primary_vehicle_type", "Car / Hatchback / Sedan"),
+            scenario.get("secondary_vehicle_type", "None"),
+        )
 
-    # Direct mappings
-    row["speed_limit"] = scenario.get("speed_limit", 30)
-    row["weather_conditions"] = scenario.get("weather_conditions", 1)
-    row["road_type"] = scenario.get("road_type", 6)
-    row["light_conditions"] = scenario.get("light_conditions", 1)
-    row["road_surface_conditions"] = scenario.get("road_surface_conditions", 1)
-    row["junction_detail"] = scenario.get("junction_detail", 0)
-    row["urban_or_rural_area"] = scenario.get("urban_or_rural_area", 1)
-    row["first_road_class"] = scenario.get("first_road_class", 3)
-    row["junction_control"] = scenario.get("junction_control", -1)
-    row["trunk_road_flag"] = scenario.get("trunk_road_flag", 2)
-    row["carriageway_hazards"] = scenario.get("carriageway_hazards", 0)
-    row["hour"] = scenario.get("hour", 12)
-    row["day_of_week"] = scenario.get("day_of_week", 3)
-    row["month"] = scenario.get("month", 6)
+    # Defaults for categorical features
+    scenario.setdefault("road_category", "National Highway (NH)")
+    scenario.setdefault("road_type", "Divided Multi-Lane (4/6-Lane)")
+    scenario.setdefault("weather_condition", "Clear / Sunny")
+    scenario.setdefault("road_surface", "Dry Asphalt / Concrete")
+    scenario.setdefault("light_condition", "Daylight")
+    scenario.setdefault("junction_type", "Straight Road (Not at Junction)")
+    scenario.setdefault("primary_vehicle_type", "Car / Hatchback / Sedan")
+    scenario.setdefault("secondary_vehicle_type", "None")
+    scenario.setdefault("collision_type", "Rear-End / Chain Pileup")
+    scenario.setdefault("speed_limit_kmh", 80)
 
-    # Vehicle features from user-facing mapping
-    vehicle_info = map_user_vehicle_input(
-        vehicle_type_name=scenario.get("vehicle_type", "Car"),
-        age_of_vehicle=scenario.get("age_of_vehicle", None),
-        driver_age_band=scenario.get("driver_age_band", None),
-        number_of_vehicles=scenario.get("number_of_vehicles", 2),
-    )
-    row.update(vehicle_info)
+    # Defaults for optional numeric features
+    scenario.setdefault("speed_delta_kmh", 0)
+    scenario.setdefault("hour", 14)
+    scenario.setdefault("day_of_week", 2)
+    scenario.setdefault("month", 7)
+    scenario.setdefault("number_of_vehicles", 2)
+    scenario.setdefault("occupants_count", 3)
 
-    X = pd.DataFrame([row])[ALL_MODEL_FEATURES]
+    # Behavioral flags
+    for k in ["is_wrong_side", "is_overloaded", "safety_gear_violation",
+              "high_beam_hazard", "stray_animal_hazard", "drowsy_window",
+              "pothole_or_speedbreaker"]:
+        scenario.setdefault(k, 0)
+
+    # DataFrame formatting
+    X_df = pd.DataFrame([scenario])[ALL_MODEL_FEATURES]
+    preprocessor = models["A"]["preprocessor"]
+    X_trans = preprocessor.transform(X_df)
+
     results = {}
 
     # Task A: Binary
     if "A" in models:
         m = models["A"]
-        raw_prob = m["pipeline"].predict_proba(X)[:, 1][0]
-        cal_prob = calibrate_single_prob(m.get("calibrator"), raw_prob)
-        threshold = m["optimal_threshold"]
-        pred = int(cal_prob >= threshold)
-        band = get_risk_band(cal_prob)
+        prob_dangerous = float(m["classifier"].predict_proba(X_trans)[:, 1][0])
+        thresh = m["optimal_threshold"]
+        pred_label = "DANGEROUS (FATAL/GRIEVOUS)" if prob_dangerous >= thresh else "MINOR"
+
+        if prob_dangerous >= 0.70:
+            band = {"label": "CRITICAL", "color": RED, "emoji": "🔴", "desc": "High probability of severe trauma"}
+        elif prob_dangerous >= 0.45:
+            band = {"label": "HIGH", "color": ORANGE, "emoji": "🟠", "desc": "Substantial injury probability"}
+        elif prob_dangerous >= thresh:
+            band = {"label": "ELEVATED", "color": YELLOW, "emoji": "🟡", "desc": "Above threshold — heightened risk"}
+        else:
+            band = {"label": "LOW", "color": GREEN, "emoji": "🟢", "desc": "Low probability of severe injury"}
 
         results["task_a"] = {
-            "prediction": "DANGEROUS" if pred == 1 else "MINOR",
-            "probability": round(cal_prob, 4),
-            "threshold": threshold,
+            "prediction": pred_label,
+            "probability": round(prob_dangerous, 4),
+            "threshold": round(thresh, 3),
             "risk_band": band,
-            "model": f"{m['model_name']} ({m['imbalance_strategy']})",
+            "model": m["model_name"],
         }
 
     # Task B: 3-Class
     if "B" in models:
         m = models["B"]
-        raw_probs = m["pipeline"].predict_proba(X)[0]
-        
-        # Apply hierarchical threshold: Fatal first, then Serious
+        probs_b = m["classifier"].predict_proba(X_trans)[0]
+        p_fatal = float(probs_b[0])
+        p_grievous = float(probs_b[1])
+        p_minor = float(probs_b[2])
+
         tau_fatal = m["optimal_fatal_threshold"]
-        tau_serious = m.get("optimal_serious_threshold", 0.45)
+        tau_grievous = m.get("optimal_grievous_threshold", 0.40)
 
-        # Calibrate fatal probability
-        cal_fatal = calibrate_single_prob(m.get("fatal_calibrator"), raw_probs[0])
-
-        if cal_fatal >= tau_fatal:
-            pred_class = 0
-            pred_label = "FATAL"
-        elif raw_probs[1] >= tau_serious:
-            pred_class = 1
-            pred_label = "SERIOUS"
+        if p_fatal >= tau_fatal:
+            pred_b = "FATAL"
+        elif p_grievous >= tau_grievous:
+            pred_b = "GRIEVOUS INJURY"
         else:
-            pred_class = 2
-            pred_label = "SLIGHT"
+            pred_b = "MINOR / PROPERTY DAMAGE"
 
         results["task_b"] = {
-            "prediction": pred_label,
+            "prediction": pred_b,
             "probabilities": {
-                "Fatal": round(float(raw_probs[0]), 4),
-                "Serious": round(float(raw_probs[1]), 4),
-                "Slight": round(float(raw_probs[2]), 4),
+                "Fatal": round(p_fatal, 4),
+                "Grievous": round(p_grievous, 4),
+                "Minor": round(p_minor, 4),
             },
-            "calibrated_fatal": round(cal_fatal, 4),
-            "model": f"{m['model_name']} ({m['imbalance_strategy']})",
-        }
-
-    # Task C: Regression
-    if "C" in models:
-        m = models["C"]
-        pred_count = float(m["pipeline"].predict(X)[0])
-        pred_count = max(1.0, pred_count)  # Floor at 1 casualty
-
-        results["task_c"] = {
-            "predicted_casualties": round(pred_count, 2),
+            "fatal_threshold": round(tau_fatal, 3),
             "model": m["model_name"],
         }
+
+    # Task C: Casualty Count
+    if "C" in models:
+        m = models["C"]
+        z_pred = float(m["regressor"].predict(X_trans)[0])
+        pred_count = max(1.0, z_pred + 1.0)
+        results["task_c"] = {
+            "predicted_casualties": round(pred_count, 1),
+            "model": m["model_name"],
+        }
+
+    # Disaster Prevention Assessment
+    b_probs = results.get("task_b", {}).get("probabilities", {"Fatal": 0.1, "Grievous": 0.3})
+    disaster_assessment = DisasterPreventionEngine.assess_disaster_risk(scenario, b_probs)
+    results["disaster"] = disaster_assessment
 
     return results
 
 
-# ==============================================================================
-# INTERACTIVE TERMINAL UI
-# ==============================================================================
-def print_header():
-    """Print the application header."""
-    print(f"\n{BOLD}{CYAN}{'═' * 70}{RESET}")
-    print(f"{BOLD}{CYAN}   🚗  RoadSense AI — Collision Risk Assessment Tool  🚗{RESET}")
-    print(f"{BOLD}{CYAN}{'═' * 70}{RESET}")
-    print(f"{DIM}   Predicts collision severity using UK DfT STATS19 models (2021-2023){RESET}")
-    print(f"{DIM}   Models: LightGBM (Class-Weighted) | Platt-calibrated | F2-thresholded{RESET}")
+# Alias for backward compatibility
+predict_indian_scenario = predict_scenario
+
+
+def print_banner():
+    print(f"\n{BOLD}{CYAN}{'═' * 76}{RESET}")
+    print(f"{BOLD}{CYAN}   🇮🇳  RoadSense AI — Indian Road Safety & Disaster Prevention Tool  🇮🇳{RESET}")
+    print(f"{BOLD}{CYAN}{'═' * 76}{RESET}")
+    print(f"{DIM}   Trained on Indian MoRTH & iRAD Standards | Weather & Behavioral Risk Engine{RESET}")
+    print(f"{DIM}   Incorporating: Expressways, Ghats, Fog, Monsoon, Wrong-Side Driving & Overloading{RESET}")
     print()
 
 
-def prompt_choice(prompt: str, options: dict, default=None) -> int:
-    """Display a numbered menu and return the selected key."""
-    print(f"\n  {BOLD}{prompt}{RESET}")
-    for key, val in options.items():
-        marker = " ←" if key == default else ""
-        print(f"    [{key}] {val}{marker}")
+def display_results(scenario: dict, results: dict):
+    print(f"\n{'═' * 76}")
+    print(f"{BOLD}{CYAN}   📊  MULTI-TASK COLLISION & DISASTER ASSESSMENT RESULTS{RESET}")
+    print(f"{'═' * 76}")
 
-    while True:
-        raw = input(f"  {CYAN}Enter choice [{default}]: {RESET}").strip()
-        if raw == "" and default is not None:
-            return default
-        try:
-            choice = int(raw)
-            if choice in options:
-                return choice
-        except ValueError:
-            pass
-        print(f"    {DIM}Invalid choice. Try again.{RESET}")
+    # Summary of input scenario
+    actual_spd = scenario.get("speed_limit_kmh", 80) + scenario.get("speed_delta_kmh", 0)
+    print(f"  {DIM}Scenario: {scenario.get('road_category')} | {scenario.get('weather_condition')}")
+    print(f"  Vehicles: {scenario.get('primary_vehicle_type')} vs {scenario.get('secondary_vehicle_type')} | Speed: {actual_spd} km/h{RESET}")
 
+    # ==========================================================================
+    # 🎯 DIRECT PROBABLE ANSWER HIGHLIGHT
+    # ==========================================================================
+    probable_severity = results.get("task_b", {}).get("prediction", "UNKNOWN")
+    prob_dangerous = results.get("task_a", {}).get("probability", 0.0)
+    fatal_prob = results.get("task_b", {}).get("probabilities", {}).get("Fatal", 0.0)
+    grievous_prob = results.get("task_b", {}).get("probabilities", {}).get("Grievous", 0.0)
+    victims = results.get("task_c", {}).get("predicted_casualties", 1.0)
+    dri = results.get("disaster", {}).get("disaster_risk_index", 50.0)
+    dri_band = results.get("disaster", {}).get("risk_band", "MODERATE")
 
-def prompt_number(prompt: str, default=None, min_val=None, max_val=None):
-    """Prompt for a numeric input with validation."""
-    while True:
-        suffix = f" [{default}]" if default is not None else ""
-        raw = input(f"  {CYAN}{prompt}{suffix}: {RESET}").strip()
-        if raw == "" and default is not None:
-            return default
-        if raw.lower() in ("skip", "none", ""):
-            return None
-        try:
-            val = float(raw)
-            if min_val is not None and val < min_val:
-                print(f"    {DIM}Must be >= {min_val}{RESET}")
-                continue
-            if max_val is not None and val > max_val:
-                print(f"    {DIM}Must be <= {max_val}{RESET}")
-                continue
-            return val
-        except ValueError:
-            print(f"    {DIM}Enter a number or 'skip'.{RESET}")
+    color_choice = RED if "FATAL" in probable_severity or dri >= 70 else (ORANGE if "GRIEVOUS" in probable_severity or dri >= 50 else GREEN)
 
-
-def prompt_vehicle_type() -> str:
-    """Prompt user to select a vehicle type."""
-    print(f"\n  {BOLD}Vehicle Type:{RESET}")
-    for i, vt in enumerate(USER_VEHICLE_TYPES, 1):
-        marker = " ←" if i == 1 else ""
-        print(f"    [{i}] {vt}{marker}")
-
-    while True:
-        raw = input(f"  {CYAN}Enter choice [1]: {RESET}").strip()
-        if raw == "":
-            return USER_VEHICLE_TYPES[0]
-        try:
-            idx = int(raw)
-            if 1 <= idx <= len(USER_VEHICLE_TYPES):
-                return USER_VEHICLE_TYPES[idx - 1]
-        except ValueError:
-            pass
-        print(f"    {DIM}Invalid choice. Try again.{RESET}")
-
-
-def collect_scenario_interactive() -> dict:
-    """Interactively collect a collision scenario from the user."""
-    print(f"\n  {UNDERLINE}Describe the collision scenario:{RESET}")
-
-    scenario = {}
-
-    # Speed limit
-    print(f"\n  {BOLD}Speed Limit (mph):{RESET}")
-    for i, sl in enumerate(USER_SPEED_LIMITS, 1):
-        marker = " ←" if sl == 30 else ""
-        print(f"    [{i}] {sl} mph{marker}")
-    while True:
-        raw = input(f"  {CYAN}Enter choice [2]: {RESET}").strip()
-        if raw == "":
-            scenario["speed_limit"] = 30
-            break
-        try:
-            idx = int(raw)
-            if 1 <= idx <= len(USER_SPEED_LIMITS):
-                scenario["speed_limit"] = USER_SPEED_LIMITS[idx - 1]
-                break
-        except ValueError:
-            pass
-        print(f"    {DIM}Invalid choice.{RESET}")
-
-    # Weather
-    scenario["weather_conditions"] = prompt_choice(
-        "Weather Conditions:", USER_WEATHER_OPTIONS, default=1
-    )
-
-    # Road type
-    scenario["road_type"] = prompt_choice(
-        "Road Type:", USER_ROAD_TYPE_OPTIONS, default=6
-    )
-
-    # Light conditions
-    light_opts = {1: "Daylight", 4: "Darkness - lights lit", 5: "Darkness - lights unlit", 6: "Darkness - no lighting"}
-    scenario["light_conditions"] = prompt_choice("Light Conditions:", light_opts, default=1)
-
-    # Road surface
-    surface_opts = {1: "Dry", 2: "Wet or damp", 3: "Snow", 4: "Frost or ice", 5: "Flood over 3cm"}
-    scenario["road_surface_conditions"] = prompt_choice("Road Surface:", surface_opts, default=1)
-
-    # Urban/Rural
-    area_opts = {1: "Urban", 2: "Rural"}
-    scenario["urban_or_rural_area"] = prompt_choice("Urban or Rural:", area_opts, default=1)
-
-    # Junction
-    junction_opts = {0: "Not at junction", 1: "Roundabout", 2: "Mini-roundabout",
-                     3: "T/staggered junction", 5: "Slip road", 6: "Crossroads",
-                     7: "More than 4 arms", 8: "Private drive", 9: "Other junction"}
-    scenario["junction_detail"] = prompt_choice("Junction Type:", junction_opts, default=0)
-
-    # Vehicle type
-    scenario["vehicle_type"] = prompt_vehicle_type()
-
-    # Number of vehicles
-    scenario["number_of_vehicles"] = int(prompt_number(
-        "Number of vehicles involved", default=2, min_val=1, max_val=20
-    ))
-
-    # Time
-    scenario["hour"] = int(prompt_number("Hour of day (0-23)", default=12, min_val=0, max_val=23))
-    scenario["day_of_week"] = int(prompt_number("Day of week (1=Sun, 7=Sat)", default=3, min_val=1, max_val=7))
-    scenario["month"] = int(prompt_number("Month (1-12)", default=6, min_val=1, max_val=12))
-
-    # Optional: vehicle age and driver age band
-    print(f"\n  {DIM}Optional (press Enter to skip):{RESET}")
-    scenario["age_of_vehicle"] = prompt_number("Age of vehicle (years)", default=None, min_val=0, max_val=50)
-    scenario["driver_age_band"] = prompt_number("Driver age band (1-11, DfT coding)", default=None, min_val=1, max_val=11)
-
-    # Defaults for fields not collected
-    scenario.setdefault("first_road_class", 3)  # A road
-    scenario.setdefault("junction_control", -1 if scenario["junction_detail"] == 0 else 4)
-    scenario.setdefault("trunk_road_flag", 2)  # Non-trunk
-    scenario.setdefault("carriageway_hazards", 0)  # None
-
-    return scenario
-
-
-# ==============================================================================
-# RESULTS DISPLAY
-# ==============================================================================
-def display_results(results: dict):
-    """Display prediction results with rich formatting."""
-    print(f"\n{'═' * 70}")
-    print(f"{BOLD}{CYAN}   📊  PREDICTION RESULTS{RESET}")
-    print(f"{'═' * 70}")
+    print(f"\n  {BOLD}{WHITE}╔{'═' * 72}╗{RESET}")
+    print(f"  {BOLD}{WHITE}║{color_choice}  🎯 PROBABLE PREDICTION SUMMARY                                        {WHITE}║{RESET}")
+    print(f"  {BOLD}{WHITE}╠{'═' * 72}╣{RESET}")
+    print(f"  {BOLD}{WHITE}║{RESET}  • {BOLD}Probable Collision Outcome:{RESET} {color_choice}{BOLD}{probable_severity}{RESET}")
+    print(f"  {BOLD}{WHITE}║{RESET}    (Fatal: {fatal_prob:.1%} | Grievous Injury: {grievous_prob:.1%} | Severe Injury Risk: {prob_dangerous:.1%})")
+    print(f"  {BOLD}{WHITE}║{RESET}  • {BOLD}Forecasted Casualties:{RESET}      {BOLD}{victims:.1f} victims{RESET} expected per incident")
+    print(f"  {BOLD}{WHITE}║{RESET}  • {BOLD}Disaster Risk Escalation:{RESET}   {color_choice}{BOLD}{dri:.1f}% ({dri_band}){RESET}")
+    if results.get("disaster", {}).get("mitigation_directives"):
+        top_directive = results["disaster"]["mitigation_directives"][0]
+        # Clean leading emoji for clean box formatting
+        print(f"  {BOLD}{WHITE}║{RESET}  • {BOLD}Top Action to Prevent Disaster:{RESET}")
+        print(f"  {BOLD}{WHITE}║{RESET}    👉 {top_directive}")
+    print(f"  {BOLD}{WHITE}║{RESET}  • {BOLD}Post-Crash Life-Saving Rule:{RESET}")
+    print(f"  {BOLD}{WHITE}║{RESET}    👉 DO NOT stand on carriageway! Evacuate IMMEDIATELY behind crash barrier.")
+    print(f"  {BOLD}{WHITE}╚{'═' * 72}╝{RESET}")
 
     # Task A
     if "task_a" in results:
         r = results["task_a"]
         band = r["risk_band"]
-        pred_color = "\033[91m" if r["prediction"] == "DANGEROUS" else "\033[32m"
-
+        pred_color = RED if "DANGEROUS" in r["prediction"] else GREEN
         print(f"\n  {BOLD}┌─ TASK A: Binary Severity Assessment{RESET}")
-        print(f"  │")
         print(f"  │  Prediction:  {pred_color}{BOLD}{r['prediction']}{RESET}")
-        print(f"  │  Probability: {BOLD}{r['probability']:.1%}{RESET} (threshold: {r['threshold']:.0%})")
-        print(f"  │")
-        print(f"  │  Risk Band:   {band['color']}{BOLD}{band['emoji']} {band['label']}{RESET}")
-        print(f"  │               {DIM}{band['desc']}{RESET}")
-        print(f"  │  Model:       {DIM}{r['model']}{RESET}")
-        print(f"  └{'─' * 50}")
+        print(f"  │  Probability: {BOLD}{r['probability']:.1%}{RESET} (Decision threshold: {r['threshold']:.1%})")
+        print(f"  │  Risk Band:   {band['color']}{BOLD}{band['emoji']} {band['label']}{RESET} — {DIM}{band['desc']}{RESET}")
+        print(f"  └{'─' * 60}")
 
     # Task B
     if "task_b" in results:
         r = results["task_b"]
-        severity_colors = {"FATAL": "\033[91m", "SERIOUS": "\033[33m", "SLIGHT": "\033[32m"}
-        pred_color = severity_colors.get(r["prediction"], "")
-
-        print(f"\n  {BOLD}┌─ TASK B: 3-Class Severity Breakdown{RESET}")
-        print(f"  │")
-        print(f"  │  Prediction:       {pred_color}{BOLD}{r['prediction']}{RESET}")
-        print(f"  │")
-        print(f"  │  Class Probabilities:")
-        for cls, prob in r["probabilities"].items():
+        p_dict = r["probabilities"]
+        color_map = {"FATAL": RED, "GRIEVOUS INJURY": ORANGE, "MINOR / PROPERTY DAMAGE": GREEN}
+        print(f"\n  {BOLD}┌─ TASK B: 3-Class Severity Breakdown (MoRTH Classification){RESET}")
+        print(f"  │  Primary Prediction: {color_map.get(r['prediction'], WHITE)}{BOLD}{r['prediction']}{RESET}")
+        print(f"  │  Probability Distribution:")
+        for cls, prob in p_dict.items():
             bar_len = int(prob * 30)
             bar = "█" * bar_len + "░" * (30 - bar_len)
-            print(f"  │    {cls:>8s}: {bar} {prob:.1%}")
-        print(f"  │")
-        print(f"  │  Calibrated Fatal:  {r['calibrated_fatal']:.2%}")
-        print(f"  │  Model:             {DIM}{r['model']}{RESET}")
-        print(f"  └{'─' * 50}")
+            c = RED if cls == "Fatal" else (ORANGE if cls == "Grievous" else GREEN)
+            print(f"  │    {cls:>10s}: {c}{bar}{RESET} {prob:.1%}")
+        print(f"  └{'─' * 60}")
 
     # Task C
     if "task_c" in results:
         r = results["task_c"]
-        count = r["predicted_casualties"]
-        count_display = f"{count:.1f}" if count != int(count) else str(int(count))
-
+        cnt = r["predicted_casualties"]
+        cnt_str = f"{cnt:.1f}" if cnt != int(cnt) else str(int(cnt))
         print(f"\n  {BOLD}┌─ TASK C: Expected Casualty Count{RESET}")
+        print(f"  │  Forecasted Victims: {BOLD}{MAGENTA}{cnt_str} people{RESET} per incident")
+        print(f"  └{'─' * 60}")
+
+    # Disaster Risk Assessment
+    if "disaster" in results:
+        d = results["disaster"]
+        dri = d["disaster_risk_index"]
+        dri_color = RED if dri >= 70 else (ORANGE if dri >= 50 else (YELLOW if dri >= 30 else GREEN))
+
+        print(f"\n  {BOLD}{MAGENTA}╔{'═' * 74}╗{RESET}")
+        print(f"  {BOLD}{MAGENTA}║  ⚠️  SYSTEMIC DISASTER ASSESSMENT & ACTIONABLE MITIGATION ENGINE         ║{RESET}")
+        print(f"  {BOLD}{MAGENTA}╚{'═' * 74}╝{RESET}")
         print(f"  │")
-        print(f"  │  Predicted Casualties: {BOLD}{count_display}{RESET}")
-        print(f"  │  Model:                {DIM}{r['model']}{RESET}")
-        print(f"  └{'─' * 50}")
+        print(f"  │  Disaster Risk Index (DRI): {dri_color}{BOLD}{d['risk_emoji']} {dri:.1f}% — {d['risk_band']}{RESET}")
+        print(f"  │  {DIM}{d['urgency_assessment']}{RESET}")
+        print(f"  │")
+
+        if d["risk_multipliers"]:
+            print(f"  │  {BOLD}Active Indian Risk Catalysts:{RESET}")
+            for m in d["risk_multipliers"]:
+                print(f"  │    • {BOLD}{m['factor']}{RESET} ({m['impact']})")
+                print(f"  │      {DIM}{m['reason']}{RESET}")
+            print(f"  │")
+
+        if d["escalation_threats"]:
+            print(f"  │  {BOLD}{RED}Potential Catastrophic Escalations:{RESET}")
+            for threat in d["escalation_threats"]:
+                print(f"  │    🚨 [{threat['severity']}] {threat['title']}")
+                print(f"  │       {threat['description']}")
+            print(f"  │")
+
+        if d["mitigation_directives"]:
+            print(f"  │  {BOLD}{CYAN}Directives to Prevent a Big Disaster (Pre-Trip / In-Transit):{RESET}")
+            for directive in d["mitigation_directives"]:
+                print(f"  │    {directive}")
+            print(f"  │")
+
+        print(f"  │  {BOLD}{YELLOW}Post-Crash Emergency Containment (Preventing Secondary Pileups):{RESET}")
+        for protocol in d["secondary_prevention_protocols"]:
+            print(f"  │    {protocol}")
+        print(f"  └{'─' * 74}")
 
     print()
 
 
-# ==============================================================================
-# MAIN ENTRY POINT
-# ==============================================================================
+def get_preset_scenarios() -> list:
+    """Returns curated realistic Indian road collision scenarios."""
+    return [
+        {
+            "name": "Yamuna Expressway: Dense Winter Smog Pileup (110 km/h, tailgating)",
+            "scenario": {
+                "road_category": "Expressway",
+                "road_type": "Divided Multi-Lane (4/6-Lane)",
+                "weather_condition": "Dense Winter Fog / Smog",
+                "road_surface": "Dry Asphalt / Concrete",
+                "light_condition": "Dusk / Dawn (Twilight)",
+                "junction_type": "Straight Road (Not at Junction)",
+                "primary_vehicle_type": "Car / Hatchback / Sedan",
+                "secondary_vehicle_type": "Heavy Goods Vehicle (Multi-Axle Truck / Dumper / Trailer)",
+                "collision_type": "Rear-End / Chain Pileup",
+                "speed_limit_kmh": 120,
+                "speed_delta_kmh": -10,  # Driving at 110 km/h in fog!
+                "hour": 6,
+                "day_of_week": 1,
+                "month": 1,
+                "number_of_vehicles": 5,
+                "occupants_count": 6,
+                "is_wrong_side": 0,
+                "is_overloaded": 0,
+                "safety_gear_violation": 1,
+                "high_beam_hazard": 0,
+                "stray_animal_hazard": 0,
+                "drowsy_window": 0,
+                "pothole_or_speedbreaker": 0,
+            }
+        },
+        {
+            "name": "Western Ghats: Heavy Monsoon Hairpin Descent (Two-Wheeler vs Bus)",
+            "scenario": {
+                "road_category": "Ghat / Hill Terrain Road",
+                "road_type": "Undivided 2-Lane",
+                "weather_condition": "Heavy Monsoon / Waterlogged",
+                "road_surface": "Wet / Slippery",
+                "light_condition": "Daylight",
+                "junction_type": "Blind Curve / Ghat Hairpin Bend",
+                "primary_vehicle_type": "Two-Wheeler (Motorcycle / Scooter)",
+                "secondary_vehicle_type": "Bus (State Transport / Private / School)",
+                "collision_type": "Head-On Collision",
+                "speed_limit_kmh": 40,
+                "speed_delta_kmh": 10,
+                "hour": 15,
+                "day_of_week": 5,
+                "month": 8,
+                "number_of_vehicles": 2,
+                "occupants_count": 32,
+                "is_wrong_side": 1, # Overtaking on blind turn
+                "is_overloaded": 1, # Triple riding
+                "safety_gear_violation": 1, # No helmets
+                "high_beam_hazard": 0,
+                "stray_animal_hazard": 0,
+                "drowsy_window": 0,
+                "pothole_or_speedbreaker": 1,
+            }
+        },
+        {
+            "name": "Delhi-Jaipur NH-48: Midnight Wrong-Side Tractor Trolley vs SUV",
+            "scenario": {
+                "road_category": "National Highway (NH)",
+                "road_type": "Divided Multi-Lane (4/6-Lane)",
+                "weather_condition": "Clear / Sunny",
+                "road_surface": "Dry Asphalt / Concrete",
+                "light_condition": "Night - Pitch Dark (No Streetlights)",
+                "junction_type": "T-Junction / Unsignalized Median Cut",
+                "primary_vehicle_type": "SUV / MUV / Compact SUV",
+                "secondary_vehicle_type": "Tractor with Trolley (Sugarcane/Construction)",
+                "collision_type": "Head-On Collision",
+                "speed_limit_kmh": 100,
+                "speed_delta_kmh": 15, # SUV speeding at 115 km/h
+                "hour": 3,
+                "day_of_week": 6,
+                "month": 11,
+                "number_of_vehicles": 2,
+                "occupants_count": 8,
+                "is_wrong_side": 1, # Tractor moving wrong side
+                "is_overloaded": 1, # Sugarcane unlit trolley
+                "safety_gear_violation": 0,
+                "high_beam_hazard": 1,
+                "stray_animal_hazard": 0,
+                "drowsy_window": 1, # 03:00 AM
+                "pothole_or_speedbreaker": 0,
+            }
+        },
+        {
+            "name": "Bangalore Outer Ring Road: Overcrowded Auto-Rickshaw vs LCV",
+            "scenario": {
+                "road_category": "Urban Arterial / Ring Road",
+                "road_type": "Divided Multi-Lane (4/6-Lane)",
+                "weather_condition": "Clear / Sunny",
+                "road_surface": "Dry Asphalt / Concrete",
+                "light_condition": "Daylight",
+                "junction_type": "Flyover Ramp / Blind Slip Road",
+                "primary_vehicle_type": "Three-Wheeler (Auto-Rickshaw / E-Rickshaw)",
+                "secondary_vehicle_type": "Light Commercial Vehicle (LCV / Tempo / Tata Ace)",
+                "collision_type": "Right Angle / T-Bone at Median Cut",
+                "speed_limit_kmh": 50,
+                "speed_delta_kmh": 10,
+                "hour": 9,
+                "day_of_week": 2,
+                "month": 4,
+                "number_of_vehicles": 2,
+                "occupants_count": 7, # 6 passengers in auto
+                "is_wrong_side": 0,
+                "is_overloaded": 1,
+                "safety_gear_violation": 1,
+                "high_beam_hazard": 0,
+                "stray_animal_hazard": 0,
+                "drowsy_window": 0,
+                "pothole_or_speedbreaker": 1,
+            }
+        },
+    ]
+
+
+def prompt_choice(title: str, items: list, default_idx: int = 0) -> str:
+    print(f"\n  {BOLD}{title}{RESET}")
+    for i, item in enumerate(items, 1):
+        marker = " ←" if (i - 1) == default_idx else ""
+        print(f"    [{i}] {item}{marker}")
+    while True:
+        raw = input(f"  {CYAN}Enter choice [{default_idx + 1}]: {RESET}").strip()
+        if raw == "":
+            return items[default_idx]
+        try:
+            choice = int(raw)
+            if 1 <= choice <= len(items):
+                return items[choice - 1]
+        except ValueError:
+            pass
+        print(f"    {DIM}Invalid choice. Try again.{RESET}")
+
+
+def prompt_yes_no(prompt: str, default: bool = False) -> int:
+    def_str = "y" if default else "n"
+    raw = input(f"  {CYAN}{prompt} (y/n) [{def_str}]: {RESET}").strip().lower()
+    if raw == "":
+        return 1 if default else 0
+    return 1 if raw.startswith("y") else 0
+
+
+def collect_interactive_scenario() -> dict:
+    """Interactively prompts user for scenario features."""
+    print(f"\n  {UNDERLINE}Describe the Indian Road Scenario:{RESET}")
+    scenario = {}
+
+    scenario["road_category"] = prompt_choice("Road Category / Hierarchy:", ROAD_CATEGORIES, default_idx=1)
+    scenario["road_type"] = prompt_choice("Road Type / Carriageway:", ROAD_TYPES, default_idx=0)
+    scenario["weather_condition"] = prompt_choice("Weather / Climatic Condition:", WEATHER_CONDITIONS, default_idx=0)
+    scenario["road_surface"] = prompt_choice("Road Surface Condition:", ROAD_SURFACES, default_idx=0)
+    scenario["light_condition"] = prompt_choice("Lighting Conditions:", LIGHT_CONDITIONS, default_idx=0)
+    scenario["junction_type"] = prompt_choice("Junction / Geometry:", JUNCTION_TYPES, default_idx=0)
+
+    # Speed limit
+    print(f"\n  {BOLD}Speed Limit (km/h):{RESET}")
+    for i, spd in enumerate(SPEED_LIMITS_KMH, 1):
+        marker = " ←" if spd == 80 else ""
+        print(f"    [{i}] {spd} km/h{marker}")
+    while True:
+        raw = input(f"  {CYAN}Enter choice [6]: {RESET}").strip()
+        if raw == "":
+            scenario["speed_limit_kmh"] = 80
+            break
+        try:
+            idx = int(raw)
+            if 1 <= idx <= len(SPEED_LIMITS_KMH):
+                scenario["speed_limit_kmh"] = SPEED_LIMITS_KMH[idx - 1]
+                break
+        except ValueError:
+            pass
+
+    actual_raw = input(f"  {CYAN}Estimated Travel Speed in km/h (optional, default = speed limit): {RESET}").strip()
+    if actual_raw.isdigit():
+        actual_val = int(actual_raw)
+        scenario["speed_delta_kmh"] = max(-30, actual_val - scenario["speed_limit_kmh"])
+    else:
+        scenario["speed_delta_kmh"] = 0
+
+    # Vehicles
+    scenario["primary_vehicle_type"] = prompt_choice("Primary Vehicle Type:", VEHICLE_TYPES, default_idx=0)
+    sec_choices = VEHICLE_TYPES + ["None"]
+    scenario["secondary_vehicle_type"] = prompt_choice("Secondary Vehicle Type (or None for solo crash):", sec_choices, default_idx=2)
+    scenario["collision_type"] = prompt_choice("Collision Type / Geometry:", COLLISION_TYPES, default_idx=0)
+
+    # Behavioral questions
+    print(f"\n  {BOLD}Behavioral & Indian Road Mindset Risk Factors:{RESET}")
+    scenario["is_wrong_side"] = prompt_yes_no("Wrong-side driving / Contraflow lane violation?", default=False)
+    scenario["is_overloaded"] = prompt_yes_no("Overloading (triple riding on 2W / overloaded auto or truck)?", default=False)
+    scenario["safety_gear_violation"] = prompt_yes_no("Safety gear non-compliance (no helmet or no seatbelt)?", default=True)
+    scenario["high_beam_hazard"] = prompt_yes_no("Blinding high-beam glare on undivided road?", default=False)
+    scenario["stray_animal_hazard"] = prompt_yes_no("Stray cattle or animal hazard on carriageway?", default=False)
+    scenario["pothole_or_speedbreaker"] = prompt_yes_no("Unmarked speed bump, ditch or pothole crater present?", default=False)
+
+    hour_raw = input(f"  {CYAN}Hour of the day (0-23) [14]: {RESET}").strip()
+    scenario["hour"] = int(hour_raw) if hour_raw.isdigit() and 0 <= int(hour_raw) <= 23 else 14
+    scenario["drowsy_window"] = 1 if 1 <= scenario["hour"] <= 5 else 0
+
+    occ_raw = input(f"  {CYAN}Total occupants / people involved [2]: {RESET}").strip()
+    scenario["occupants_count"] = int(occ_raw) if occ_raw.isdigit() and int(occ_raw) >= 1 else 2
+    scenario["number_of_vehicles"] = 1 if scenario["secondary_vehicle_type"] == "None" else 2
+
+    return scenario
+
+
 def main():
-    parser = argparse.ArgumentParser(description="RoadSense AI — Collision Risk Prediction")
-    parser.add_argument("--batch", type=str, help="Path to CSV file for batch predictions")
+    parser = argparse.ArgumentParser(description="RoadSense AI — Indian Road Safety & Disaster Mitigation")
+    parser.add_argument("--batch", type=str, help="Path to batch CSV file")
+    parser.add_argument("--quick", action="store_true", help="Run immediate prediction without menu")
+    parser.add_argument("--preset", type=int, choices=[1, 2, 3, 4], help="Run a specific preset directly (1-4)")
+    parser.add_argument("--road", type=str, default="National Highway (NH)", help="Road type/hierarchy")
+    parser.add_argument("--weather", type=str, default="Clear / Sunny", help="Weather condition")
+    parser.add_argument("--speed", type=int, default=80, help="Speed limit in km/h")
+    parser.add_argument("--actual-speed", type=int, default=None, help="Actual travel speed in km/h")
+    parser.add_argument("--vehicle", type=str, default="Two-Wheeler (Motorcycle / Scooter)", help="Primary vehicle")
+    parser.add_argument("--other-vehicle", type=str, default="Car / Hatchback / Sedan", help="Secondary vehicle or None")
+    parser.add_argument("--wrong-side", action="store_true", help="Wrong-side/contraflow driving")
+    parser.add_argument("--overloaded", action="store_true", help="Overloaded vehicle / triple riding")
+    parser.add_argument("--no-helmet", action="store_true", help="No helmet or unstrapped helmet")
+    parser.add_argument("--no-seatbelt", action="store_true", help="No seatbelt worn")
+    parser.add_argument("--high-beam", action="store_true", help="High-beam glare on undivided road")
     args = parser.parse_args()
 
-    print_header()
+    print_banner()
 
-    # Load models
-    print(f"  {DIM}Loading models...{RESET}", end="", flush=True)
-    models = load_models()
-    loaded = ", ".join([f"Task {k}" for k in models.keys()])
-    print(f"\r  ✓ Models loaded: {loaded}      ")
+    print(f"  {DIM}Loading Indian Road Safety models...{RESET}", end="", flush=True)
+    models = load_indian_models()
+    loaded_tasks = ", ".join([f"Task {k}" for k in models.keys()])
+    print(f"\r  ✓ Indian Models Loaded: {loaded_tasks}          \n")
 
     if not models:
-        print(f"\n  ❌ No models found in {MODELS_DIR}/. Run training first.")
+        print(f"  ❌ No Indian models found in {MODELS_DIR}/. Run 'python -m src.indian_train' first.")
         sys.exit(1)
 
-    if args.batch:
-        # Batch mode
-        print(f"\n  Processing batch file: {args.batch}")
-        batch_df = pd.read_csv(args.batch)
-        all_results = []
+    # Direct preset or quick CLI flags
+    presets = get_preset_scenarios()
 
-        for i, row in batch_df.iterrows():
-            scenario = row.to_dict()
-            result = predict_single(models, scenario)
-            flat = {"index": i}
-            if "task_a" in result:
-                flat["severity_binary"] = result["task_a"]["prediction"]
-                flat["dangerous_prob"] = result["task_a"]["probability"]
-                flat["risk_band"] = result["task_a"]["risk_band"]["label"]
-            if "task_b" in result:
-                flat["severity_3class"] = result["task_b"]["prediction"]
-                flat["fatal_prob"] = result["task_b"]["probabilities"]["Fatal"]
-            if "task_c" in result:
-                flat["predicted_casualties"] = result["task_c"]["predicted_casualties"]
-            all_results.append(flat)
-
-        out_df = pd.DataFrame(all_results)
-        out_path = args.batch.replace(".csv", "_predictions.csv")
-        out_df.to_csv(out_path, index=False)
-        print(f"  ✓ Saved {len(out_df)} predictions to: {out_path}")
+    if args.preset:
+        selected_scenario = presets[args.preset - 1]["scenario"]
+        res = predict_indian_scenario(models, selected_scenario)
+        display_results(selected_scenario, res)
         return
 
-    # Interactive mode
+    # Check if user specified any custom flag or requested quick prediction
+    custom_flag_set = any([
+        args.quick,
+        args.actual_speed is not None,
+        args.wrong_side,
+        args.overloaded,
+        args.no_helmet,
+        args.no_seatbelt,
+        args.high_beam,
+        args.road != "National Highway (NH)",
+        args.weather != "Clear / Sunny",
+        args.speed != 80,
+        args.vehicle != "Two-Wheeler (Motorcycle / Scooter)",
+        args.other-vehicle != "Car / Hatchback / Sedan" if hasattr(args, "other-vehicle") else False,
+    ])
+
+    if custom_flag_set:
+        actual_spd = args.actual_speed if args.actual_speed is not None else args.speed
+        speed_delta = actual_spd - args.speed
+
+        # Build custom scenario from flags
+        scenario = {
+            "road_category": args.road,
+            "road_type": "Divided Multi-Lane (4/6-Lane)" if "Expressway" in args.road or "Highway" in args.road else "Undivided 2-Lane",
+            "weather_condition": args.weather,
+            "road_surface": "Waterlogged / Potholed" if "Monsoon" in args.weather or "Rain" in args.weather else "Dry Asphalt / Concrete",
+            "light_condition": "Daylight",
+            "junction_type": "Straight Road (Not at Junction)",
+            "primary_vehicle_type": args.vehicle,
+            "secondary_vehicle_type": args.other_vehicle,
+            "collision_type": "Head-On Collision" if args.wrong_side else "Rear-End / Chain Pileup",
+            "speed_limit_kmh": args.speed,
+            "speed_delta_kmh": speed_delta,
+            "hour": 14,
+            "day_of_week": 3,
+            "month": 7,
+            "number_of_vehicles": 1 if args.other_vehicle == "None" else 2,
+            "occupants_count": 3 if args.overloaded else 2,
+            "is_wrong_side": 1 if args.wrong_side else 0,
+            "is_overloaded": 1 if args.overloaded else 0,
+            "safety_gear_violation": 1 if (args.no_helmet or args.no_seatbelt) else 0,
+            "high_beam_hazard": 1 if args.high_beam else 0,
+            "stray_animal_hazard": 0,
+            "drowsy_window": 0,
+            "pothole_or_speedbreaker": 0,
+        }
+        res = predict_indian_scenario(models, scenario)
+        display_results(scenario, res)
+        return
+
+    if args.batch:
+        print(f"  Processing batch file: {args.batch}")
+        b_df = pd.read_csv(args.batch)
+        results_list = []
+        for i, row in b_df.iterrows():
+            sc = row.to_dict()
+            res = predict_indian_scenario(models, sc)
+            flat = {"index": i}
+            if "task_a" in res:
+                flat["severity_binary"] = res["task_a"]["prediction"]
+                flat["dangerous_prob"] = res["task_a"]["probability"]
+                flat["risk_band"] = res["task_a"]["risk_band"]["label"]
+            if "task_b" in res:
+                flat["severity_3class"] = res["task_b"]["prediction"]
+                flat["fatal_prob"] = res["task_b"]["probabilities"]["Fatal"]
+                flat["grievous_prob"] = res["task_b"]["probabilities"]["Grievous"]
+            if "task_c" in res:
+                flat["predicted_casualties"] = res["task_c"]["predicted_casualties"]
+            if "disaster" in res:
+                flat["disaster_risk_index"] = res["disaster"]["disaster_risk_index"]
+                flat["disaster_risk_band"] = res["disaster"]["risk_band"]
+            results_list.append(flat)
+
+        out_path = args.batch.replace(".csv", "_indian_predictions.csv")
+        pd.DataFrame(results_list).to_csv(out_path, index=False)
+        print(f"  ✓ Saved batch predictions to: {out_path}")
+        return
+
+    # Interactive menu
+    presets = get_preset_scenarios()
+
     while True:
         try:
-            scenario = collect_scenario_interactive()
-            results = predict_single(models, scenario)
-            display_results(results)
+            print(f"  {BOLD}Select an Option:{RESET}")
+            for i, p in enumerate(presets, 1):
+                print(f"    [{i}] Preset: {p['name']}")
+            print(f"    [{len(presets) + 1}] Custom Interactive Scenario (Input your own parameters)")
+            print(f"    [{len(presets) + 2}] Exit")
 
-            again = input(f"  {CYAN}Run another scenario? (y/n) [y]: {RESET}").strip().lower()
+            choice_raw = input(f"\n  {CYAN}Enter choice [1]: {RESET}").strip()
+            if choice_raw == "":
+                choice = 1
+            else:
+                try:
+                    choice = int(choice_raw)
+                except ValueError:
+                    choice = 1
+
+            if choice == len(presets) + 2:
+                break
+            elif 1 <= choice <= len(presets):
+                selected_scenario = presets[choice - 1]["scenario"]
+            else:
+                selected_scenario = collect_interactive_scenario()
+
+            res = predict_indian_scenario(models, selected_scenario)
+            display_results(selected_scenario, res)
+
+            again = input(f"  {CYAN}Evaluate another scenario? (y/n) [y]: {RESET}").strip().lower()
             if again == "n":
                 break
         except KeyboardInterrupt:
-            print(f"\n\n  {DIM}Exiting RoadSense AI. Stay safe on the roads! 🚗{RESET}\n")
             break
 
-    print(f"\n{BOLD}{CYAN}{'═' * 70}{RESET}")
-    print(f"{DIM}  Thank you for using RoadSense AI.{RESET}")
-    print(f"{BOLD}{CYAN}{'═' * 70}{RESET}\n")
+    print(f"\n{BOLD}{CYAN}{'═' * 76}{RESET}")
+    print(f"  {BOLD}Stay Alert, Stay Safe — Drive Defensively on Indian Roads! 🚗 🏍️ 🇮🇳{RESET}")
+    print(f"{BOLD}{CYAN}{'═' * 76}{RESET}\n")
 
 
 if __name__ == "__main__":

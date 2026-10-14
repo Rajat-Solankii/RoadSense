@@ -1,7 +1,0 @@
-Feature_Group,Features_Included,Num_Features,Task_A_PR_AUC_Drop,Task_A_Relative_Importance_Pct,Task_B_Fatal_PR_AUC_Drop,Task_B_Relative_Importance_Pct
-Vulnerable Road Users,"any_motorcycle, any_pedal_cycle, most_vulnerable_vehicle_type",3,0.0958,22.96,0.0092,14.51
-Vehicle Fleet & Age,"number_of_vehicles, any_hgv_or_bus, age_of_vehicle_max, age_of_vehicle_max_missing, driver_age_band_youngest, driver_age_band_youngest_missing",6,0.0634,15.19,0.0203,31.91
-Speed & Road Geometry,"speed_limit, road_type, first_road_class, urban_or_rural_area",4,0.0614,14.72,0.0312,49.09
-Weather & Road Surface,"weather_conditions, light_conditions, road_surface_conditions, carriageway_hazards, trunk_road_flag",5,0.0239,5.72,0.0069,10.93
-Junction Characteristics,"junction_detail, junction_control",2,0.0077,1.86,0.0081,12.81
-Time & Seasonality,"hour, day_of_week, month",3,0.0051,1.23,0.0064,10.0

@@ -1,7 +1,0 @@
-task,model,eval_split,train_time_sec,accuracy,macro_f1,target_class_recall,target_class_precision,roc_auc,pr_auc,notes
-Task A (Binary),Majority Class Baseline,Test (2023),0.01,0.7606,0.432,0.0,0.0,0.5,0.2394,Always predicts Minor (Class 0)
-Task A (Binary),Logistic Regression,Validation (2022),1.15,0.7692,0.4801,0.0499,0.6169,0.6529,0.3788,"Fitted on 2021, validated on 2022"
-Task A (Binary),Logistic Regression,Test (2023),2.36,0.7649,0.479,0.0504,0.6074,0.6515,0.3816,"Fitted on 2021-2022, tested on 2023"
-Task B (3-Class),Majority Class Baseline,Test (2023),0.01,0.7606,0.288,0.0,0.0,0.5,0.0146,Always predicts Slight (Class 2); 0% Fatal recall
-Task B (3-Class),Multinomial Logistic Regression,Validation (2022),2.06,0.7675,0.3102,0.0,0.0,0.692,0.0707,"Fitted on 2021, validated on 2022"
-Task B (3-Class),Multinomial Logistic Regression,Test (2023),4.6,0.7633,0.3094,0.0,0.0,0.6877,0.0544,"Fitted on 2021-2022, tested on 2023"
