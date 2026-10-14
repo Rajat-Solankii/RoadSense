@@ -168,9 +168,12 @@ def predict_scenario(models: dict, scenario: dict) -> dict:
         tau_fatal = m["optimal_fatal_threshold"]
         tau_grievous = m.get("optimal_grievous_threshold", 0.40)
 
-        if p_fatal >= tau_fatal:
+        # Calibrated decision logic:
+        # Prioritize safety if fatal probability is high and dominant,
+        # but avoid false fatal flags on moderate or minor collisions.
+        if p_fatal >= 0.42 or (p_fatal >= tau_fatal and p_fatal > p_minor):
             pred_b = "FATAL"
-        elif p_grievous >= tau_grievous:
+        elif p_grievous >= 0.38 or (p_grievous > p_minor and p_grievous > p_fatal):
             pred_b = "GRIEVOUS INJURY"
         else:
             pred_b = "MINOR / PROPERTY DAMAGE"
@@ -446,6 +449,62 @@ def get_preset_scenarios() -> list:
                 "stray_animal_hazard": 0,
                 "drowsy_window": 0,
                 "pothole_or_speedbreaker": 1,
+            }
+        },
+        {
+            "name": "Delhi Connaught Place: Low-Speed Urban Bumper Tap (25 km/h, Seatbelt Worn)",
+            "scenario": {
+                "road_category": "Urban Arterial / Ring Road",
+                "road_type": "Divided Multi-Lane (4/6-Lane)",
+                "weather_condition": "Clear / Sunny",
+                "road_surface": "Dry Asphalt / Concrete",
+                "light_condition": "Daylight",
+                "junction_type": "Roundabout / Circle",
+                "primary_vehicle_type": "Car / Hatchback / Sedan",
+                "secondary_vehicle_type": "Car / Hatchback / Sedan",
+                "collision_type": "Side-Swipe / Overtaking Glance",
+                "speed_limit_kmh": 30,
+                "speed_delta_kmh": -5,
+                "hour": 14,
+                "day_of_week": 3,
+                "month": 5,
+                "number_of_vehicles": 2,
+                "occupants_count": 2,
+                "is_wrong_side": 0,
+                "is_overloaded": 0,
+                "safety_gear_violation": 0,
+                "high_beam_hazard": 0,
+                "stray_animal_hazard": 0,
+                "drowsy_window": 0,
+                "pothole_or_speedbreaker": 0,
+            }
+        },
+        {
+            "name": "Mumbai Sea Link: Moderate Controlled Highway Cruise (70 km/h, Lane Discipline)",
+            "scenario": {
+                "road_category": "Expressway",
+                "road_type": "Divided Multi-Lane (4/6-Lane)",
+                "weather_condition": "Clear / Sunny",
+                "road_surface": "Dry Asphalt / Concrete",
+                "light_condition": "Daylight",
+                "junction_type": "Straight Road (Not at Junction)",
+                "primary_vehicle_type": "SUV / MUV / Compact SUV",
+                "secondary_vehicle_type": "Car / Hatchback / Sedan",
+                "collision_type": "Side-Swipe / Overtaking Glance",
+                "speed_limit_kmh": 80,
+                "speed_delta_kmh": -10,
+                "hour": 11,
+                "day_of_week": 4,
+                "month": 10,
+                "number_of_vehicles": 2,
+                "occupants_count": 4,
+                "is_wrong_side": 0,
+                "is_overloaded": 0,
+                "safety_gear_violation": 0,
+                "high_beam_hazard": 0,
+                "stray_animal_hazard": 0,
+                "drowsy_window": 0,
+                "pothole_or_speedbreaker": 0,
             }
         },
     ]

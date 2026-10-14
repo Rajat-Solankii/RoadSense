@@ -51,7 +51,10 @@ class DisasterPreventionEngine:
         # Base disaster points from model's fatal + grievous prediction
         fatal_prob = severity_probs.get("Fatal", 0.05)
         grievous_prob = severity_probs.get("Grievous", 0.25)
-        base_dri = (fatal_prob * 1.5 + grievous_prob * 0.7) * 60.0
+
+        # Scale base DRI dynamically with operating kinetic velocity
+        speed_factor = max(0.25, min(1.25, actual_speed / 80.0))
+        base_dri = (fatal_prob * 1.4 + grievous_prob * 0.6) * 55.0 * speed_factor
 
         risk_multipliers: List[Dict[str, Any]] = []
         mitigation_directives: List[str] = []

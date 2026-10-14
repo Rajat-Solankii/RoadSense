@@ -82,6 +82,20 @@ def api_presets():
             "icon": "🛺",
             "severity_hint": "GRIEVOUS INJURY",
             "color": "warning"
+        },
+        {
+            "id": 4,
+            "badge": "Urban Bumper Tap",
+            "icon": "🚗",
+            "severity_hint": "MINOR DAMAGE",
+            "color": "success"
+        },
+        {
+            "id": 5,
+            "badge": "Sea Link Cruise",
+            "icon": "🛣️",
+            "severity_hint": "MINOR RISK",
+            "color": "success"
         }
     ]
     

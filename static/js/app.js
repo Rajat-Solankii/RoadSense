@@ -261,6 +261,24 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (scenarioLabel) scenarioLabel.textContent = "Custom Evaluated Incident";
             runPrediction("Custom Scenario");
         });
+
+        // Live Auto-Assessment on ANY input/slider/checkbox change:
+        let predictDebounceTimer = null;
+        const triggerAutoPrediction = () => {
+            if (predictDebounceTimer) clearTimeout(predictDebounceTimer);
+            predictDebounceTimer = setTimeout(() => {
+                document.querySelectorAll(".preset-btn").forEach(b => b.classList.remove("active"));
+                if (scenarioLabel) scenarioLabel.textContent = "Live Custom Assessment";
+                runPrediction("Live Custom Adjustment");
+            }, 120);
+        };
+
+        scenarioForm.querySelectorAll("select, input").forEach(el => {
+            el.addEventListener("change", triggerAutoPrediction);
+            if (el.type === "range" || el.type === "number") {
+                el.addEventListener("input", triggerAutoPrediction);
+            }
+        });
     }
 
     if (btnReset) {
