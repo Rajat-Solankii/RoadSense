@@ -68,6 +68,23 @@ python predict.py
 
 ---
 
+## 🌐 Interactive Web Frontend (UI)
+
+RoadSense AI includes an interactive web dashboard with **1-click clickable scenario buttons** (Yamuna Fog Pileup, Western Ghats Monsoon, NH-48 Midnight Wrong-Side, Bangalore Auto Overcrowding) and real-time risk assessment output.
+
+### Launch Flask Web App (Recommended)
+```bash
+python app.py
+```
+Open **[http://localhost:5000](http://localhost:5000)** in your browser to interact with the full dashboard.
+
+### Launch Streamlit App (Alternative)
+```bash
+streamlit run streamlit_app.py
+```
+
+---
+
 ## 📊 Model Performance on Indian Benchmark
 
 | Prediction Head | Target Formulation | Holdout Metric | Test Score |

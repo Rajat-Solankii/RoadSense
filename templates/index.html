@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoadSense AI — Indian Road Safety & Disaster Prevention</title>
+    <meta name="description" content="AI-powered road collision severity assessment and secondary disaster prevention calibrated on MoRTH and iRAD empirical standards.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- Background glow ambient effects -->
+    <div class="ambient-glow glow-1"></div>
+    <div class="ambient-glow glow-2"></div>
+
+    <div class="app-container">
+        <!-- Top Navigation / Header -->
+        <header class="header">
+            <div class="brand-row">
+                <div class="brand-logo">
+                    <span class="logo-icon">🛡️</span>
+                    <div>
+                        <h1 class="logo-title">RoadSense <span class="highlight">AI</span></h1>
+                        <p class="logo-subtitle">MoRTH & iRAD Calibrated Disaster Prevention Engine</p>
+                    </div>
+                </div>
+                <div class="header-badges">
+                    <span class="status-pill"><span class="pulse-dot"></span> LightGBM Ensemble Active</span>
+                    <span class="morth-badge">MoRTH 2022-23 Aligned</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Grid Layout -->
+        <main class="main-layout">
+            <!-- Left Side: Controls & Input -->
+            <section class="control-panel">
+                <!-- Preset Scenarios Section -->
+                <div class="panel-card presets-card">
+                    <div class="card-header">
+                        <h2>⚡ Quick Preset Scenarios</h2>
+                        <span class="badge-sub">Click any button to test immediately</span>
+                    </div>
+                    <div class="presets-grid" id="presetsGrid">
+                        <!-- Loaded dynamically via JS -->
+                        <div class="preset-loading">Loading realistic road presets...</div>
+                    </div>
+                </div>
+
+                <!-- Scenario Customizer Form -->
+                <div class="panel-card form-card">
+                    <div class="card-header">
+                        <h2>🛠️ Scenario Customizer</h2>
+                        <span class="badge-sub">Configure road parameters & behavior</span>
+                    </div>
+
+                    <form id="scenarioForm">
+                        <!-- Group 1: Road & Environment -->
+                        <div class="form-section">
+                            <h3 class="section-title">📍 Road & Environmental Context</h3>
+                            <div class="grid-2">
+                                <div class="form-group">
+                                    <label for="road_category">Road Category</label>
+                                    <select id="road_category" name="road_category" class="custom-select"></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="road_type">Road Geometry</label>
+                                    <select id="road_type" name="road_type" class="custom-select"></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="weather_condition">Weather Condition</label>
+                                    <select id="weather_condition" name="weather_condition" class="custom-select"></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="road_surface">Surface Condition</label>
+                                    <select id="road_surface" name="road_surface" class="custom-select"></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="light_condition">Lighting Condition</label>
+                                    <select id="light_condition" name="light_condition" class="custom-select"></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="junction_type">Junction Type</label>
+                                    <select id="junction_type" name="junction_type" class="custom-select"></select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Group 2: Vehicles & Dynamics -->
+                        <div class="form-section">
+                            <h3 class="section-title">🚗 Vehicles & Collision Dynamics</h3>
+                            <div class="grid-2">
+                                <div class="form-group">
+                                    <label for="primary_vehicle_type">Primary Vehicle</label>
+                                    <select id="primary_vehicle_type" name="primary_vehicle_type" class="custom-select"></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="secondary_vehicle_type">Secondary Vehicle (or Obstacle)</label>
+                                    <select id="secondary_vehicle_type" name="secondary_vehicle_type" class="custom-select"></select>
+                                </div>
+                                <div class="form-group span-2">
+                                    <label for="collision_type">Collision Mechanism</label>
+                                    <select id="collision_type" name="collision_type" class="custom-select"></select>
+                                </div>
+                            </div>
+
+                            <div class="grid-3 mt-sm">
+                                <div class="form-group">
+                                    <label for="speed_limit_kmh">Speed Limit (km/h)</label>
+                                    <select id="speed_limit_kmh" name="speed_limit_kmh" class="custom-select"></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="number_of_vehicles">Vehicles Involved</label>
+                                    <input type="number" id="number_of_vehicles" name="number_of_vehicles" min="1" max="25" value="2" class="custom-input">
+                                </div>
+                                <div class="form-group">
+                                    <label for="occupants_count">Total Occupants</label>
+                                    <input type="number" id="occupants_count" name="occupants_count" min="1" max="80" value="4" class="custom-input">
+                                </div>
+                            </div>
+
+                            <div class="slider-group mt-sm">
+                                <div class="slider-header">
+                                    <label for="speed_delta_kmh">Speed Delta (Overspeeding)</label>
+                                    <span id="speedDeltaValue" class="slider-badge">+0 km/h</span>
+                                </div>
+                                <input type="range" id="speed_delta_kmh" name="speed_delta_kmh" min="-40" max="80" value="0" class="custom-range">
+                                <div class="slider-ticks">
+                                    <span>-40 km/h (Slow)</span>
+                                    <span>Limit</span>
+                                    <span>+80 km/h (Extreme)</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Group 3: Behavioral Risk Factors -->
+                        <div class="form-section">
+                            <h3 class="section-title">⚠️ Behavioral Violations & Mindset Hazards</h3>
+                            <div class="chips-grid">
+                                <label class="toggle-chip" title="Wrong-side driving against traffic">
+                                    <input type="checkbox" id="is_wrong_side" name="is_wrong_side">
+                                    <span class="chip-content">⛔ Wrong-Side Driving</span>
+                                </label>
+                                <label class="toggle-chip" title="Overloaded commercial cargo or triple riding">
+                                    <input type="checkbox" id="is_overloaded" name="is_overloaded">
+                                    <span class="chip-content">📦 Overloading / Triple Riding</span>
+                                </label>
+                                <label class="toggle-chip" title="No helmet on two-wheeler or no seatbelt">
+                                    <input type="checkbox" id="safety_gear_violation" name="safety_gear_violation">
+                                    <span class="chip-content">🪖 Safety Gear Violation</span>
+                                </label>
+                                <label class="toggle-chip" title="Blinding high-beam oncoming glare">
+                                    <input type="checkbox" id="high_beam_hazard" name="high_beam_hazard">
+                                    <span class="chip-content">💡 High-Beam Glare</span>
+                                </label>
+                                <label class="toggle-chip" title="Sudden cattle or stray animal entry">
+                                    <input type="checkbox" id="stray_animal_hazard" name="stray_animal_hazard">
+                                    <span class="chip-content">🐄 Stray Animal Hazard</span>
+                                </label>
+                                <label class="toggle-chip" title="Driver fatigue window (02:00 AM - 05:00 AM)">
+                                    <input type="checkbox" id="drowsy_window" name="drowsy_window">
+                                    <span class="chip-content">🥱 Drowsy Window (Night)</span>
+                                </label>
+                                <label class="toggle-chip" title="Unscientific speed-breaker or deep pothole">
+                                    <input type="checkbox" id="pothole_or_speedbreaker" name="pothole_or_speedbreaker">
+                                    <span class="chip-content">🕳️ Pothole / Speed-Breaker</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="actions-row">
+                            <button type="submit" id="btnPredict" class="btn btn-primary">
+                                <span class="btn-icon">⚡</span>
+                                <span>Assess Collision & Disaster Risk</span>
+                            </button>
+                            <button type="button" id="btnReset" class="btn btn-secondary">
+                                <span>Reset Form</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Right Side: Real-Time Output Dashboard -->
+            <section class="results-panel">
+                <div class="panel-card results-card" id="resultsContainer">
+                    <div class="card-header results-header">
+                        <div>
+                            <h2>🎯 Risk Assessment Output</h2>
+                            <p id="scenarioLabel" class="active-scenario-tag">Yamuna Expressway Fog Pileup</p>
+                        </div>
+                        <div id="loadingIndicator" class="loading-spinner hidden"></div>
+                    </div>
+
+                    <!-- 3 Hero KPI Cards -->
+                    <div class="hero-metrics-grid">
+                        <!-- Metric 1: Severity Prediction -->
+                        <div class="metric-card" id="severityCard">
+                            <div class="metric-icon" id="severityIcon">🚨</div>
+                            <div class="metric-content">
+                                <span class="metric-label">Predicted Severity</span>
+                                <h3 class="metric-value" id="severityValue">FATAL</h3>
+                                <div class="metric-badge" id="severityBadge">CRITICAL TRAUMA RISK</div>
+                            </div>
+                        </div>
+
+                        <!-- Metric 2: Disaster Risk Index -->
+                        <div class="metric-card" id="driCard">
+                            <div class="metric-icon">⚠️</div>
+                            <div class="metric-content">
+                                <span class="metric-label">Disaster Risk Index</span>
+                                <h3 class="metric-value" id="driValue">98.0%</h3>
+                                <div class="metric-badge badge-dri" id="driBand">EXTREME DISASTER</div>
+                            </div>
+                        </div>
+
+                        <!-- Metric 3: Casualties -->
+                        <div class="metric-card" id="casualtiesCard">
+                            <div class="metric-icon">👥</div>
+                            <div class="metric-content">
+                                <span class="metric-label">Forecasted Casualties</span>
+                                <h3 class="metric-value" id="casualtiesValue">5.4</h3>
+                                <span class="metric-sub" id="occupantsAnalyzed">from 6 occupants</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Severity Probabilities Breakdown -->
+                    <div class="card-sub-box mt-md">
+                        <h4 class="sub-box-title">📊 Granular Severity Probability Breakdown</h4>
+                        <div class="prob-bars-container">
+                            <div class="prob-row">
+                                <div class="prob-labels">
+                                    <span class="label-fatal">Fatal Outcome</span>
+                                    <span id="fatalPct" class="pct-fatal">48.2%</span>
+                                </div>
+                                <div class="progress-track">
+                                    <div id="barFatal" class="progress-fill fill-fatal" style="width: 48.2%;"></div>
+                                </div>
+                            </div>
+
+                            <div class="prob-row">
+                                <div class="prob-labels">
+                                    <span class="label-grievous">Grievous Injury</span>
+                                    <span id="grievousPct" class="pct-grievous">39.1%</span>
+                                </div>
+                                <div class="progress-track">
+                                    <div id="barGrievous" class="progress-fill fill-grievous" style="width: 39.1%;"></div>
+                                </div>
+                            </div>
+
+                            <div class="prob-row">
+                                <div class="prob-labels">
+                                    <span class="label-minor">Minor / Property Damage</span>
+                                    <span id="minorPct" class="pct-minor">12.7%</span>
+                                </div>
+                                <div class="progress-track">
+                                    <div id="barMinor" class="progress-fill fill-minor" style="width: 12.7%;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Disaster Escalation Assessment -->
+                    <div class="card-sub-box mt-md" id="disasterAssessmentBox">
+                        <div class="box-header-row">
+                            <h4 class="sub-box-title">🚨 Urgent Threat Escalation Assessment</h4>
+                            <span class="urgency-pill" id="urgencyLevel">CODE RED</span>
+                        </div>
+                        <p id="urgencyText" class="urgency-description">
+                            Multiple compounding hazards present. Immediate catastrophic pileup and casualty magnification probable.
+                        </p>
+                        
+                        <!-- Escalation Threats list -->
+                        <div class="threats-wrapper mt-sm" id="threatsWrapper">
+                            <span class="threats-title">Identified Escalation Threats:</span>
+                            <ul id="threatsList" class="styled-list threats-list">
+                                <!-- Populated dynamically -->
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Actionable Directives & Emergency Protocol -->
+                    <div class="protocols-grid mt-md">
+                        <!-- In-Transit Safety Directives -->
+                        <div class="protocol-box directives-box">
+                            <div class="protocol-header">
+                                <span class="protocol-icon">🛡️</span>
+                                <h4>In-Transit Prevention Directives</h4>
+                            </div>
+                            <ul id="directivesList" class="styled-list">
+                                <!-- Populated dynamically -->
+                            </ul>
+                        </div>
+
+                        <!-- Emergency Secondary Crash Containment -->
+                        <div class="protocol-box emergency-box">
+                            <div class="protocol-header">
+                                <span class="protocol-icon">🚑</span>
+                                <h4>Golden Hour & Secondary Containment</h4>
+                            </div>
+                            <div class="emergency-helplines">
+                                <div class="helpline-badge">
+                                    <span class="hl-name">NHAI Expressway</span>
+                                    <span class="hl-number">📞 1033</span>
+                                </div>
+                                <div class="helpline-badge">
+                                    <span class="hl-name">All-India Emergency</span>
+                                    <span class="hl-number">🚨 112</span>
+                                </div>
+                            </div>
+                            <ul id="secondaryList" class="styled-list">
+                                <!-- Populated dynamically -->
+                            </ul>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>RoadSense AI • Calibrated with MoRTH 2022-2023 National Road Accident Statistics & iRAD Database Schema</p>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
