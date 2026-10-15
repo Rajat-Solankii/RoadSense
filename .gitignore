@@ -15,6 +15,7 @@ __pycache__/
 
 # Raw data files (>100MB raw STATS19 CSVs)
 data/*.csv
+!data/morth_official_statistics.csv
 data/*.xlsx
 
 # OS & IDE

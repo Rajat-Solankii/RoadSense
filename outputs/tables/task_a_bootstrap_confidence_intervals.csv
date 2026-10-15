@@ -1,6 +1,0 @@
-Metric,Point_Estimate,CI_95_Lower,CI_95_Upper
-pr_auc,0.4178,0.4117,0.4245
-roc_auc,0.692,0.6883,0.6958
-dangerous_recall,0.9324,0.9293,0.9354
-dangerous_precision,0.2759,0.2729,0.2788
-dangerous_f2,0.6318,0.6281,0.6353
